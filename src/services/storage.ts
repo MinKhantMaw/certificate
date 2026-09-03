@@ -5,6 +5,14 @@ const LEGACY_CERT_KEY = 'cms_certificates';
 const IMPORT_KEY = 'cms_imports';
 const AUTH_KEY = 'cms_auth';
 
+const DEMO_VERIFICATION_TOKENS: Record<string, string> = {
+  'CERT-2026-000001': '00000000-0000-4000-8000-000000000001',
+  'CERT-2026-000002': '00000000-0000-4000-8000-000000000002',
+  'CERT-2026-000003': '00000000-0000-4000-8000-000000000003',
+  'CERT-2026-000004': '00000000-0000-4000-8000-000000000004',
+  'CERT-2026-000005': '00000000-0000-4000-8000-000000000005',
+};
+
 function getBaseUrl(): string {
   if (typeof window !== 'undefined' && window.location?.origin) {
     return window.location.origin;
@@ -153,7 +161,7 @@ export const storage = {
       status: 'VALID' | 'REVOKED',
       offsetMs: number
     ): Certificate => {
-      const verificationToken = crypto.randomUUID();
+      const verificationToken = DEMO_VERIFICATION_TOKENS[certNumber] || crypto.randomUUID();
       const verificationUrl = `${baseUrl}/verify/${verificationToken}`;
       return {
         id: certNumber,
