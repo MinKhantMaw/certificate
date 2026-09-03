@@ -1,0 +1,6 @@
+{
+  "name": "Certificate Management System",
+  "description": "A functional prototype for managing and verifying certificates, including Excel imports, QR code generation, and public verification.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
