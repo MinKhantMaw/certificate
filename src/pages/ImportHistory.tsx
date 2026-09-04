@@ -1,83 +1,88 @@
-import { useState, useEffect } from 'react';
-import { storage } from '../services/storage';
-import { ImportRecord } from '../types';
-import { History, FileSpreadsheet, CheckCircle2, AlertCircle } from 'lucide-react';
-import { formatDate } from '../utils';
+import { useEffect, useState } from "react";
+import { FileSpreadsheet, History } from "lucide-react";
+import { ImportBatch } from "../types";
+import { storage } from "../services/storage";
+import { formatDate } from "../utils";
 
 export function ImportHistory() {
-  const [imports, setImports] = useState<ImportRecord[]>([]);
-
-  useEffect(() => {
-    setImports(storage.getImports());
-  }, []);
-
+  const [imports, setImports] = useState<ImportBatch[]>([]);
+  useEffect(() => setImports(storage.getImportBatches()), []);
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h2 className="font-semibold text-gray-900 flex items-center">
-            <History className="w-5 h-5 mr-2 text-gray-500" />
-            Import History Log
-          </h2>
-        </div>
-        
+      <div>
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-600">
+          Data intake
+        </p>
+        <h2 className="mt-2 text-3xl font-semibold text-slate-950">
+          Import history
+        </h2>
+        <p className="mt-2 text-slate-500">
+          Every roster remains tied to the training program it was submitted
+          for.
+        </p>
+      </div>
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Rows</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Failed</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                {[
+                  "Import ID",
+                  "File",
+                  "Training program",
+                  "Rows",
+                  "Status",
+                  "Submitted",
+                ].map((label) => (
+                  <th
+                    key={label}
+                    className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
+                  >
+                    {label}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-slate-100">
               {imports.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                    <FileSpreadsheet className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-                    <p>No import history found.</p>
+                  <td colSpan={6} className="p-12 text-center text-slate-500">
+                    <History
+                      className="mx-auto mb-3 text-slate-300"
+                      size={40}
+                    />
+                    No import batches yet.
                   </td>
                 </tr>
               ) : (
-                imports.map((record) => (
-                  <tr key={record.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <FileSpreadsheet className="w-5 h-5 text-green-600 mr-2" />
-                        <span className="text-sm font-medium text-gray-900">{record.fileName}</span>
-                      </div>
+                imports.map((batch) => (
+                  <tr key={batch.id}>
+                    <td className="px-5 py-4 font-mono text-sm text-slate-900">
+                      {batch.id}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(record.importDate)}
+                    <td className="px-5 py-4 text-sm text-slate-700">
+                      <FileSpreadsheet
+                        className="mr-2 inline text-emerald-600"
+                        size={16}
+                      />
+                      {batch.fileName}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {record.totalRows}
+                    <td className="px-5 py-4 text-sm text-slate-600">
+                      {storage.getTraining(batch.trainingProgramId)?.name ||
+                        "Unknown"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">
-                      {record.successfulRows}
+                    <td className="px-5 py-4 text-sm text-slate-600">
+                      {batch.validRows} valid / {batch.totalRows} total
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">
-                      {record.failedRows}
+                    <td className="px-5 py-4">
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs font-semibold ${batch.status === "APPROVED" ? "bg-emerald-100 text-emerald-700" : batch.status === "REJECTED" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}
+                      >
+                        {batch.status.replace("_", " ")}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {record.status === 'COMPLETED' && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          <CheckCircle2 className="w-3 h-3 mr-1" /> Completed
-                        </span>
-                      )}
-                      {record.status === 'PARTIAL' && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                          <AlertCircle className="w-3 h-3 mr-1" /> Partial
-                        </span>
-                      )}
-                      {record.status === 'FAILED' && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          <AlertCircle className="w-3 h-3 mr-1" /> Failed
-                        </span>
-                      )}
+                    <td className="px-5 py-4 text-sm text-slate-500">
+                      {formatDate(batch.submittedAt || batch.createdAt)}
                     </td>
                   </tr>
                 ))

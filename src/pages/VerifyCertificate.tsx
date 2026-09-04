@@ -111,14 +111,22 @@ export function VerifyCertificate() {
                 >
                   {cert.status === "VALID"
                     ? "✓ Certificate Verified"
-                    : "⚠ Certificate Revoked"}
+                    : cert.status === "REVOKED"
+                      ? "⚠ Certificate Revoked"
+                      : cert.status === "PENDING_APPROVAL"
+                        ? "Certificate Pending Approval"
+                        : "Certificate Not Valid"}
                 </h2>
                 <p
                   className={`text-sm ${cert.status === "VALID" ? "text-green-700" : "text-amber-700"}`}
                 >
                   {cert.status === "VALID"
                     ? "This certificate is authentic, official, and currently valid."
-                    : "This certificate was previously issued but has been REVOKED by the issuing authority and is no longer valid."}
+                    : cert.status === "REVOKED"
+                      ? "This certificate was previously issued but has been revoked and is no longer valid."
+                      : cert.status === "PENDING_APPROVAL"
+                        ? "This certificate is awaiting approval from the assigned approvers."
+                        : "This certificate is not currently valid."}
                 </p>
               </div>
 

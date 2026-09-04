@@ -1,275 +1,344 @@
-import { useState, ChangeEvent } from 'react';
-import * as XLSX from 'xlsx';
-import { Upload, AlertCircle, CheckCircle2, ChevronRight, XCircle } from 'lucide-react';
-import { ImportedRow, Certificate } from '../types';
-import { storage } from '../services/storage';
-import { generateCertificateNumber } from '../utils';
+import { ChangeEvent, useState } from "react";
+import * as XLSX from "xlsx";
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
+  ChevronRight,
+  Upload,
+} from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ImportBatch, ImportedRow, PendingImportTrainee } from "../types";
+import { storage } from "../services/storage";
 
-type ImportStep = 'UPLOAD' | 'PREVIEW' | 'RESULT';
+type ImportStep = "UPLOAD" | "PREVIEW" | "SUBMITTED";
 
 export function ImportExcel() {
-  const [step, setStep] = useState<ImportStep>('UPLOAD');
+  const { id: trainingProgramId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const program = trainingProgramId
+    ? storage.getTraining(trainingProgramId)
+    : undefined;
+  const [step, setStep] = useState<ImportStep>("UPLOAD");
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<ImportedRow[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [importResult, setImportResult] = useState<{ success: number; failed: number } | null>(null);
+  const [batch, setBatch] = useState<ImportBatch | null>(null);
+  const [error, setError] = useState("");
 
-  const REQUIRED_COLS = ['recipient_name', 'certificate_title', 'course_name', 'issue_date', 'organization', 'certificate_type', 'email'];
-
-  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
-    setFile(selectedFile);
-    parseExcel(selectedFile);
-  };
-
-  const parseExcel = (file: File) => {
+  const parseExcel = (selectedFile: File) => {
+    setError("");
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = (event) => {
       try {
-        const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const firstSheet = workbook.SheetNames[0];
-        const rawRows = XLSX.utils.sheet_to_json<any>(workbook.Sheets[firstSheet]);
-        
-        const validatedRows = rawRows.map(row => {
-          const errors: string[] = [];
-          
-          REQUIRED_COLS.forEach(col => {
-            if (!row[col] || String(row[col]).trim() === '') {
-              errors.push(`Missing ${col}`);
-            }
-          });
-
+        const workbook = XLSX.read(event.target?.result, { type: "binary" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+          sheet,
+          { defval: "" },
+        );
+        const required = ["recipient_name", "email", "training_code"];
+        const seen = new Set<string>();
+        const parsed = rawRows.map((row) => {
+          const code = String(row.training_code || "").trim();
+          const email = String(row.email || "").trim();
+          const name = String(row.recipient_name || "").trim();
+          const errors = required
+            .filter((column) => !String(row[column] || "").trim())
+            .map((column) => `Missing ${column}`);
+          if (code && program && code !== program.trainingCode)
+            errors.push(
+              "The training code in the Excel file does not match the selected Training Program.",
+            );
+          if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+            errors.push("Invalid email");
+          const duplicateKey = `${email.toLowerCase()}|${code}`;
+          if (seen.has(duplicateKey)) errors.push("Duplicate trainee");
+          seen.add(duplicateKey);
           return {
-            recipient_name: row.recipient_name || '',
-            certificate_title: row.certificate_title || '',
-            course_name: row.course_name || '',
-            issue_date: row.issue_date || '',
-            organization: row.organization || '',
-            certificate_type: row.certificate_type || '',
-            email: row.email || '',
+            recipient_name: name,
+            email,
+            training_code: code,
+            employee_id: String(row.employee_id || "").trim(),
+            department: String(row.department || "").trim(),
+            position: String(row.position || "").trim(),
+            completion_date: String(row.completion_date || "").trim(),
+            certificate_title: "",
+            course_name: "",
+            issue_date: "",
+            organization: "",
+            certificate_type: "",
             isValid: errors.length === 0,
-            errors
+            errors,
           };
         });
-
-        setRows(validatedRows);
-        setStep('PREVIEW');
-      } catch (err) {
-        alert('Failed to parse Excel file. Make sure it is a valid .xlsx or .xls file.');
+        if (!rawRows.length)
+          throw new Error("The Excel file contains no rows.");
+        setRows(parsed);
+        setFile(selectedFile);
+        setStep("PREVIEW");
+      } catch (parseError) {
+        setError(
+          parseError instanceof Error
+            ? parseError.message
+            : "Unable to parse this Excel file.",
+        );
       }
     };
-    reader.readAsBinaryString(file);
+    reader.readAsBinaryString(selectedFile);
   };
 
-  const confirmImport = () => {
-    setIsProcessing(true);
-    
-    setTimeout(() => {
-      const validRows = rows.filter(r => r.isValid);
-      let startIndex = storage.getNextCertificateIndex();
-      
-      const newCertificates: Certificate[] = validRows.map(row => {
-        const certNumber = generateCertificateNumber(startIndex++);
-        const verificationToken = crypto.randomUUID();
-        const origin = window.location.origin;
-        const verificationUrl = `${origin}/verify/${verificationToken}`;
-
-        return {
-          id: certNumber,
-          certificateNumber: certNumber,
-          verificationToken,
-          verificationUrl,
-          recipientName: row.recipient_name,
-          certificateTitle: row.certificate_title,
-          courseName: row.course_name,
-          issueDate: String(row.issue_date),
-          organization: row.organization,
-          certificateType: row.certificate_type,
-          email: row.email,
-          status: 'VALID',
-          createdAt: new Date().toISOString(),
-        };
-      });
-
-      storage.saveCertificates(newCertificates);
-      
-      // Save Import Record
-      storage.saveImport({
-        id: crypto.randomUUID(),
-        fileName: file?.name || 'Unknown',
-        importDate: new Date().toISOString(),
-        totalRows: rows.length,
-        successfulRows: validRows.length,
-        failedRows: rows.length - validRows.length,
-        status: validRows.length > 0 ? (validRows.length === rows.length ? 'COMPLETED' : 'PARTIAL') : 'FAILED'
-      });
-
-      setImportResult({ success: validRows.length, failed: rows.length - validRows.length });
-      setIsProcessing(false);
-      setStep('RESULT');
-    }, 1000); // Simulate processing delay
+  const submitForApproval = () => {
+    if (
+      !program ||
+      !file ||
+      rows.some((row) =>
+        row.errors?.some((message) => message.includes("does not match")),
+      )
+    )
+      return;
+    const validRows = rows.filter((row) => row.isValid);
+    const timestamp = new Date().toISOString();
+    const importBatch: ImportBatch = {
+      id: `IMP-${new Date().getFullYear()}-${String(storage.getImportBatches().length + 1).padStart(3, "0")}`,
+      trainingProgramId: program.id,
+      fileName: file.name,
+      totalRows: rows.length,
+      validRows: validRows.length,
+      invalidRows: rows.length - validRows.length,
+      status: "PENDING_APPROVAL",
+      uploadedBy: storage.getUser()?.id || "unknown",
+      submittedAt: timestamp,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    const pendingRows: PendingImportTrainee[] = rows.map((row, index) => ({
+      id: crypto.randomUUID(),
+      importBatchId: importBatch.id,
+      trainingProgramId: program.id,
+      recipientName: row.recipient_name,
+      email: row.email,
+      employeeId: row.employee_id,
+      trainingCode: row.training_code || "",
+      department: row.department,
+      position: row.position,
+      completionDate: row.completion_date,
+      validationStatus: row.isValid ? "VALID" : "INVALID",
+      validationErrors: row.errors || [],
+    }));
+    storage.saveImportBatch(importBatch);
+    storage.savePendingImportTrainees(pendingRows);
+    storage.addAuditLog(
+      "Import submitted for approval",
+      "ImportBatch",
+      importBatch.id,
+    );
+    setBatch(importBatch);
+    setStep("SUBMITTED");
   };
 
-  const resetImport = () => {
-    setStep('UPLOAD');
-    setFile(null);
-    setRows([]);
-    setImportResult(null);
-  };
-
+  if (!program)
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-red-800">
+        Training Program not found.
+      </div>
+    );
+  const validCount = rows.filter((row) => row.isValid).length;
   return (
     <div className="space-y-6">
-      {/* Progress Steps */}
-      <div className="flex items-center justify-center space-x-4 py-4">
-        <StepIndicator active={step === 'UPLOAD'} completed={step !== 'UPLOAD'} label="Upload" />
-        <ChevronRight className="w-5 h-5 text-gray-400" />
-        <StepIndicator active={step === 'PREVIEW'} completed={step === 'RESULT'} label="Preview & Validate" />
-        <ChevronRight className="w-5 h-5 text-gray-400" />
-        <StepIndicator active={step === 'RESULT'} completed={false} label="Result" />
+      <Link
+        to={`/training-programs/${program.id}`}
+        className="inline-flex items-center gap-2 text-sm font-medium text-teal-700"
+      >
+        <ArrowLeft size={16} /> Back to {program.name}
+      </Link>
+      <div>
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-600">
+          {program.trainingCode}
+        </p>
+        <h2 className="mt-2 text-3xl font-semibold text-slate-950">
+          Import trainees
+        </h2>
+        <p className="mt-2 text-slate-500">
+          Upload records for <strong>{program.name}</strong>. The selected
+          program is the source of truth.
+        </p>
       </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-h-[400px]">
-        {step === 'UPLOAD' && (
-          <div className="p-12 flex flex-col items-center justify-center text-center h-full">
-            <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-6">
-              <Upload className="w-10 h-10" />
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+      <div className="flex items-center justify-center gap-3 text-sm">
+        <Step
+          active={step === "UPLOAD"}
+          complete={step !== "UPLOAD"}
+          label="Upload"
+        />
+        <ChevronRight className="text-slate-300" />
+        <Step
+          active={step === "PREVIEW"}
+          complete={step === "SUBMITTED"}
+          label="Validate & preview"
+        />
+        <ChevronRight className="text-slate-300" />
+        <Step active={step === "SUBMITTED"} complete={false} label="Approval" />
+      </div>
+      {step === "UPLOAD" && (
+        <div className="rounded-xl border border-slate-200 bg-white p-12 text-center shadow-sm">
+          <Upload className="mx-auto text-teal-600" size={42} />
+          <h3 className="mt-4 text-lg font-semibold text-slate-950">
+            Upload Excel roster
+          </h3>
+          <p className="mx-auto mt-2 max-w-lg text-sm text-slate-500">
+            Required columns: recipient_name, email, training_code. Optional:
+            employee_id, department, position, completion_date.
+          </p>
+          <label className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white">
+            <Upload size={17} /> Select Excel file
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                event.target.files?.[0] && parseExcel(event.target.files[0])
+              }
+            />
+          </label>
+        </div>
+      )}
+      {step === "PREVIEW" && (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 p-5">
+            <div>
+              <h3 className="font-semibold text-slate-950">
+                Preview imported data
+              </h3>
+              <p className="text-sm text-slate-500">
+                {file?.name} · {rows.length} rows · {validCount} valid
+              </p>
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Upload Excel File</h2>
-            <p className="text-gray-500 mb-8 max-w-md">
-              Upload your .xlsx or .xls file containing certificate recipient data. 
-              Required columns: recipient_name, certificate_title, course_name, issue_date, organization, certificate_type, email.
-            </p>
-            <label className="cursor-pointer bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm inline-flex items-center">
-              <Upload className="w-5 h-5 mr-2" />
-              Select File
-              <input 
-                type="file" 
-                accept=".xlsx, .xls" 
-                className="hidden" 
-                onChange={handleFileUpload}
-              />
-            </label>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setStep("UPLOAD")}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700"
+              >
+                Choose another
+              </button>
+              <button
+                disabled={
+                  !validCount ||
+                  rows.some((row) =>
+                    row.errors?.some((message) =>
+                      message.includes("does not match"),
+                    ),
+                  )
+                }
+                onClick={submitForApproval}
+                className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Submit for approval
+              </button>
+            </div>
           </div>
-        )}
-
-        {step === 'PREVIEW' && (
-          <div className="flex flex-col h-full">
-            <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-              <div>
-                <h3 className="font-semibold text-gray-900">Preview Data</h3>
-                <p className="text-sm text-gray-500">File: {file?.name}</p>
-              </div>
-              <div className="flex space-x-3">
-                <button 
-                  onClick={resetImport}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={confirmImport}
-                  disabled={isProcessing || rows.filter(r => r.isValid).length === 0}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                >
-                  {isProcessing ? 'Generating...' : `Import ${rows.filter(r => r.isValid).length} Valid Rows`}
-                </button>
-              </div>
-            </div>
-            
-            <div className="p-4 grid grid-cols-3 gap-4 border-b border-gray-200 bg-white">
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <p className="text-sm text-gray-500">Total Rows</p>
-                <p className="text-2xl font-bold text-gray-900">{rows.length}</p>
-              </div>
-              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                <p className="text-sm text-green-600">Valid Rows</p>
-                <p className="text-2xl font-bold text-green-700">{rows.filter(r => r.isValid).length}</p>
-              </div>
-              <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-                <p className="text-sm text-red-600">Invalid Rows</p>
-                <p className="text-2xl font-bold text-red-700">{rows.filter(r => !r.isValid).length}</p>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto p-4 flex-1">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recipient</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Errors</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {rows.map((row, idx) => (
-                    <tr key={idx} className={row.isValid ? '' : 'bg-red-50'}>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {row.isValid ? (
-                          <CheckCircle2 className="w-5 h-5 text-green-500" />
-                        ) : (
-                          <AlertCircle className="w-5 h-5 text-red-500" />
-                        )}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{row.recipient_name}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{row.course_name}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{row.email}</td>
-                      <td className="px-4 py-3 text-sm text-red-600">
-                        {row.errors?.join(', ')}
-                      </td>
-                    </tr>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-white">
+                <tr>
+                  {[
+                    "Validation",
+                    "Name",
+                    "Email",
+                    "Training code",
+                    "Employee ID",
+                    "Department",
+                    "Errors",
+                  ].map((label) => (
+                    <th
+                      key={label}
+                      className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
+                    >
+                      {label}
+                    </th>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {rows.map((row, index) => (
+                  <tr key={index} className={row.isValid ? "" : "bg-red-50/60"}>
+                    <td className="px-4 py-3">
+                      {row.isValid ? (
+                        <CheckCircle2 className="text-emerald-600" size={18} />
+                      ) : (
+                        <AlertCircle className="text-red-600" size={18} />
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-slate-900">
+                      {row.recipient_name}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-600">
+                      {row.email}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-sm text-slate-600">
+                      {row.training_code}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {row.employee_id || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {row.department || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-red-700">
+                      {row.errors?.join(", ") || "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-
-        {step === 'RESULT' && (
-          <div className="p-12 flex flex-col items-center justify-center text-center h-full">
-            <div className="w-20 h-20 bg-green-50 text-green-600 rounded-full flex items-center justify-center mb-6">
-              <CheckCircle2 className="w-10 h-10" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Import Successful!</h2>
-            <p className="text-gray-600 mb-8 max-w-md">
-              Successfully generated <strong>{importResult?.success}</strong> certificates.
-              {importResult?.failed ? ` Skipped ${importResult.failed} invalid rows.` : ''}
-            </p>
-            <div className="flex space-x-4">
-              <button 
-                onClick={resetImport}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
-              >
-                Import Another
-              </button>
-              <button 
-                onClick={() => window.location.href = '/certificates'}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-              >
-                View Certificates
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
+      {step === "SUBMITTED" && batch && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-10 text-center">
+          <CheckCircle2 className="mx-auto text-emerald-600" size={48} />
+          <h3 className="mt-4 text-2xl font-semibold text-emerald-950">
+            Import submitted for approval
+          </h3>
+          <p className="mt-2 text-emerald-800">
+            {batch.id} · {batch.validRows} valid rows are waiting for an
+            approver.
+          </p>
+          <button
+            onClick={() => navigate(`/training-programs/${program.id}`)}
+            className="mt-6 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white"
+          >
+            Return to training program
+          </button>
+        </div>
+      )}
     </div>
   );
 }
-
-function StepIndicator({ active, completed, label }: { active: boolean, completed: boolean, label: string }) {
+function Step({
+  active,
+  complete,
+  label,
+}: {
+  active: boolean;
+  complete: boolean;
+  label: string;
+}) {
   return (
-    <div className={`flex items-center space-x-2 ${active ? 'text-blue-600' : (completed ? 'text-green-600' : 'text-gray-400')}`}>
-      {completed ? (
-        <CheckCircle2 className="w-6 h-6" />
+    <div
+      className={`flex items-center gap-2 font-medium ${active ? "text-teal-700" : complete ? "text-emerald-600" : "text-slate-400"}`}
+    >
+      {complete ? (
+        <CheckCircle2 size={18} />
       ) : (
-        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold ${active ? 'border-blue-600 bg-blue-50' : 'border-gray-300'}`}>
-          <div className={`w-2 h-2 rounded-full ${active ? 'bg-blue-600' : 'bg-transparent'}`} />
-        </div>
+        <span className="flex h-5 w-5 items-center justify-center rounded-full border text-xs">
+          {active ? "•" : ""}
+        </span>
       )}
-      <span className="font-medium text-sm">{label}</span>
+      {label}
     </div>
   );
 }

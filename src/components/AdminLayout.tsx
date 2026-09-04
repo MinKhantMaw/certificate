@@ -1,7 +1,20 @@
-import { useEffect } from 'react';
-import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileBadge, Upload, History, Users, Settings, LogOut, Menu } from 'lucide-react';
-import { storage } from '../services/storage';
+import { useEffect } from "react";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
+import {
+  LayoutDashboard,
+  FileBadge,
+  Upload,
+  History,
+  Users,
+  Settings,
+  LogOut,
+  Menu,
+  ClipboardList,
+  Palette,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
+import { storage } from "../services/storage";
 
 export function AdminLayout() {
   const navigate = useNavigate();
@@ -10,16 +23,41 @@ export function AdminLayout() {
 
   const handleLogout = () => {
     storage.logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   const navItems = [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/certificates', icon: FileBadge, label: 'Certificates' },
-    { to: '/import', icon: Upload, label: 'Import Excel' },
-    { to: '/imports', icon: History, label: 'Import History' },
-    { to: '/users', icon: Users, label: 'Users' },
-    { to: '/settings', icon: Settings, label: 'Settings' },
+    { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    {
+      to: "/training-programs",
+      icon: ClipboardList,
+      label: "Training Programs",
+    },
+    {
+      to: "/certificate-templates",
+      icon: Palette,
+      label: "Certificate Templates",
+    },
+    { to: "/certificates", icon: FileBadge, label: "Certificates" },
+    { to: "/import", icon: Upload, label: "Import Excel" },
+    { to: "/imports", icon: History, label: "Import History" },
+    { to: "/users", icon: Users, label: "Users" },
+    ...(user?.role === "APPROVER"
+      ? [
+          {
+            to: "/approvals/imports",
+            icon: ShieldCheck,
+            label: "Import Approvals",
+          },
+          {
+            to: "/approvals",
+            icon: ShieldCheck,
+            label: "Certificate Approvals",
+          },
+        ]
+      : []),
+    { to: "/profile", icon: UserRound, label: "My Signature" },
+    { to: "/settings", icon: Settings, label: "Settings" },
   ];
 
   // Initialize demo data
@@ -27,7 +65,9 @@ export function AdminLayout() {
     storage.initDemoData();
   }, []);
 
-  const pageTitle = navItems.find(item => location.pathname.startsWith(item.to))?.label || 'Dashboard';
+  const pageTitle =
+    navItems.find((item) => location.pathname.startsWith(item.to))?.label ||
+    "Dashboard";
 
   return (
     <div className="flex h-screen bg-gray-50 font-sans text-gray-900">
@@ -46,8 +86,8 @@ export function AdminLayout() {
                 className={({ isActive }) =>
                   `flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                     isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? "bg-blue-50 text-blue-700"
+                      : "text-gray-700 hover:bg-gray-100"
                   }`
                 }
               >
@@ -67,7 +107,9 @@ export function AdminLayout() {
             <button className="md:hidden p-2 -ml-2 text-gray-400 hover:text-gray-500">
               <Menu className="w-6 h-6" />
             </button>
-            <h1 className="text-xl font-semibold text-gray-900 ml-2 md:ml-0">{pageTitle}</h1>
+            <h1 className="text-xl font-semibold text-gray-900 ml-2 md:ml-0">
+              {pageTitle}
+            </h1>
           </div>
           <div className="flex items-center space-x-4">
             <div className="hidden sm:flex items-center text-sm">

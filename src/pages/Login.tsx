@@ -1,21 +1,30 @@
-import { useState, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { storage } from '../services/storage';
-import { FileBadge, Lock, Mail } from 'lucide-react';
+import { useState, FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { storage } from "../services/storage";
+import { FileBadge, Lock, Mail } from "lucide-react";
 
 export function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"ADMIN" | "TRAINER" | "APPROVER">("ADMIN");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleLogin = (e: FormEvent) => {
     e.preventDefault();
-    if (email === 'admin@example.com' && password === 'admin123') {
-      storage.login(email);
-      navigate('/dashboard');
+    const demo =
+      role === "ADMIN"
+        ? email === "admin@example.com"
+        : role === "TRAINER"
+          ? email === "trainer@example.com"
+          : email === "approver@example.com";
+    if (demo && password === "admin123") {
+      storage.login(email, role);
+      navigate("/dashboard");
     } else {
-      setError('Invalid credentials. Use admin@example.com / admin123');
+      setError(
+        "Invalid credentials. Use the demo email for the selected role and password admin123.",
+      );
     }
   };
 
@@ -37,7 +46,28 @@ export function Login() {
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-gray-100">
           <form className="space-y-6" onSubmit={handleLogin}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="role"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Role
+              </label>
+              <select
+                id="role"
+                value={role}
+                onChange={(e) => setRole(e.target.value as typeof role)}
+                className="mt-1 block w-full border-gray-300 rounded-md py-2 border px-3"
+              >
+                <option value="ADMIN">Administrator</option>
+                <option value="TRAINER">Trainer</option>
+                <option value="APPROVER">Approver</option>
+              </select>
+            </div>
+            <div>
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Email address
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
@@ -59,7 +89,10 @@ export function Login() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Password
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
@@ -94,10 +127,16 @@ export function Login() {
                 Sign in
               </button>
             </div>
-            
+
             <div className="mt-4 text-center text-xs text-gray-500">
-              Demo Credentials:<br/>
-              Email: <strong>admin@example.com</strong><br/>
+              Demo Credentials:
+              <br />
+              Admin: <strong>admin@example.com</strong>
+              <br />
+              Trainer: <strong>trainer@example.com</strong>
+              <br />
+              Approver: <strong>approver@example.com</strong>
+              <br />
               Password: <strong>admin123</strong>
             </div>
           </form>
