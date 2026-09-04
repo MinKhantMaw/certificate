@@ -59,7 +59,7 @@ export function Login() {
                 className="mt-1 block w-full border-gray-300 rounded-md py-2 border px-3"
               >
                 <option value="ADMIN">Administrator</option>
-                <option value="TRAINER">Trainer</option>
+                {/* <option value="TRAINER">Trainer</option> */}
                 <option value="APPROVER">Approver</option>
               </select>
             </div>
@@ -128,7 +128,7 @@ export function Login() {
               </button>
             </div>
 
-            <div className="mt-4 text-center text-xs text-gray-500">
+            {/* <div className="mt-4 text-center text-xs text-gray-500">
               Demo Credentials:
               <br />
               Admin: <strong>admin@example.com</strong>
@@ -138,7 +138,7 @@ export function Login() {
               Approver: <strong>approver@example.com</strong>
               <br />
               Password: <strong>admin123</strong>
-            </div>
+            </div> */}
           </form>
         </div>
       </div>
