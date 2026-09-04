@@ -29,7 +29,7 @@ export function ImportHistory() {
                 {[
                   "Import ID",
                   "File",
-                  "Training program",
+                  "Achievement",
                   "Rows",
                   "Status",
                   "Submitted",

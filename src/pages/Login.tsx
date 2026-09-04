@@ -59,7 +59,7 @@ export function Login() {
                 className="mt-1 block w-full border-gray-300 rounded-md py-2 border px-3"
               >
                 <option value="ADMIN">Administrator</option>
-                {/* <option value="TRAINER">Trainer</option> */}
+                <option value="TRAINER">Trainer</option>
                 <option value="APPROVER">Approver</option>
               </select>
             </div>

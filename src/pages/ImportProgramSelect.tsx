@@ -14,7 +14,7 @@ export function ImportProgramSelect() {
           Import trainees
         </h2>
         <p className="mt-2 text-slate-500">
-          Select the training program that owns this roster before uploading
+          Select the achievement that owns this roster before uploading
           Excel.
         </p>
       </div>
@@ -22,13 +22,13 @@ export function ImportProgramSelect() {
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
           <ClipboardList className="mx-auto text-slate-300" size={42} />
           <h3 className="mt-4 font-semibold text-slate-900">
-            Create a training program first
+            Create an achievement first
           </h3>
           <Link
             to="/training-programs"
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white"
           >
-            Open training programs <ArrowRight size={16} />
+            Open achievements <ArrowRight size={16} />
           </Link>
         </div>
       ) : (

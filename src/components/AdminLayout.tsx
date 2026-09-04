@@ -31,7 +31,7 @@ export function AdminLayout() {
     {
       to: "/training-programs",
       icon: ClipboardList,
-      label: "Training Programs",
+      label: "Achievements",
     },
     {
       to: "/certificate-templates",

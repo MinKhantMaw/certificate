@@ -20,6 +20,15 @@ export const storage = {
   getTraining: (id: string) => storage.getTrainings().find(item => item.id === id),
   saveTraining: (training: TrainingProgram) => write(KEYS.trainings, [...storage.getTrainings(), training]),
   updateTraining: (training: TrainingProgram) => write(KEYS.trainings, storage.getTrainings().map(item => item.id === training.id ? training : item)),
+  approveTraining: (trainingProgramId: string, trainerId: string) => {
+    const program = storage.getTraining(trainingProgramId);
+    if (!program || program.status !== 'DRAFT') throw new Error('Only draft achievements can be approved.');
+    if (!program.trainerIds.includes(trainerId)) throw new Error('Trainer is not assigned to this achievement.');
+    const completed = { ...program, status: 'COMPLETED' as const };
+    storage.updateTraining(completed);
+    storage.addAuditLog('Achievement approved and completed', 'TrainingProgram', program.id);
+    return completed;
+  },
   getTrainees: (): Trainee[] => {
     const trainees = read<Trainee[]>(KEYS.trainees, []);
     const trainings = storage.getTrainings();

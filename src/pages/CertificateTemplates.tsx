@@ -45,7 +45,7 @@ export function CertificateTemplates() {
             Certificate templates
           </h2>
           <p className="mt-2 text-slate-500">
-            Choose the visual system that every training program inherits.
+            Choose the visual system that every achievement inherits.
           </p>
         </div>
         <button

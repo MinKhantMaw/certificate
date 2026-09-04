@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Upload, Users } from "lucide-react";
+import { ArrowLeft, Check, Upload, Users } from "lucide-react";
 import { storage } from "../services/storage";
 
 export function TrainingProgramDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const program = id ? storage.getTraining(id) : undefined;
+  const user = storage.getUser();
+  const [program, setProgram] = useState(() => (id ? storage.getTraining(id) : undefined));
   if (!program)
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-red-800">
@@ -34,13 +36,21 @@ export function TrainingProgramDetail() {
       );
     }
   };
+  const approve = () => {
+    if (!user || user.role !== "TRAINER") return;
+    try {
+      setProgram(storage.approveTraining(program.id, user.id));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Unable to approve achievement.");
+    }
+  };
   return (
     <div className="space-y-6">
       <Link
         to="/training-programs"
         className="inline-flex items-center gap-2 text-sm font-medium text-teal-700"
       >
-        <ArrowLeft size={16} /> Training programs
+        <ArrowLeft size={16} /> Achievements
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -55,6 +65,15 @@ export function TrainingProgramDetail() {
           </p>
         </div>
         <div className="flex gap-3">
+          {user?.role === "TRAINER" && program.status === "DRAFT" && (
+            <button
+              onClick={approve}
+              disabled={!program.trainerIds.includes(user.id)}
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Check size={17} /> Approve &amp; complete
+            </button>
+          )}
           <Link
             to={`/training-programs/${program.id}/import`}
             className="inline-flex items-center gap-2 rounded-lg border border-teal-700 px-4 py-2.5 text-sm font-semibold text-teal-700"

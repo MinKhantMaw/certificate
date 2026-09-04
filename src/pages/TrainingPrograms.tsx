@@ -63,10 +63,10 @@ export function TrainingPrograms() {
             Program operations
           </p>
           <h2 className="mt-2 text-3xl font-semibold text-slate-950">
-            Training programs
+            Achievements
           </h2>
           <p className="mt-2 text-slate-500">
-            Every certificate starts with a program, its people, and its
+            Every certificate starts with an achievement, its people, and its
             template.
           </p>
         </div>
