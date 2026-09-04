@@ -6,10 +6,6 @@ export function CertificatePreview({ certificate, baseUrl }: { certificate: Cert
   const origin = baseUrl || (typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost:3000');
   const verificationUrl = certificate.verificationUrl || `${origin}/verify/${certificate.verificationToken}`;
 
-  // Log as requested for token debugging
-  console.log("QR verification URL:", verificationUrl);
-  console.log("Token stored in certificate:", certificate.verificationToken);
-
   return (
     <div className="w-full max-w-[800px] aspect-[1.414/1] bg-white border-[12px] border-double border-gray-300 p-12 relative shadow-lg mx-auto flex flex-col justify-between" id="printable-certificate">
       

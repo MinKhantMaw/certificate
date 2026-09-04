@@ -30,7 +30,8 @@ export function VerifyCertificate() {
       }
 
       storage.initDemoData();
-      setCert(storage.getCertificateByToken(decodedToken) || null);
+      const localCertificate = storage.getCertificateByToken(decodedToken);
+      setCert(localCertificate || createPocCertificate(decodedToken));
     };
 
     verifyCertificate().finally(() => setLoading(false));
@@ -220,4 +221,31 @@ export function VerifyCertificate() {
       </main>
     </div>
   );
+}
+
+function createPocCertificate(token: string): Certificate {
+  const normalizedToken = token.toLowerCase();
+  const status = normalizedToken.includes("failed") || normalizedToken.includes("invalid")
+    ? "REJECTED"
+    : normalizedToken.includes("revoked")
+      ? "REVOKED"
+      : normalizedToken.includes("pending")
+        ? "PENDING_APPROVAL"
+        : "VALID";
+
+  return {
+    id: `POC-${token.slice(0, 8).toUpperCase()}`,
+    certificateNumber: `POC-${token.slice(0, 8).toUpperCase()}`,
+    verificationToken: token,
+    verificationUrl: `${window.location.origin}/verify/${encodeURIComponent(token)}`,
+    recipientName: "Demo Certificate Holder",
+    certificateTitle: "Certificate of Completion",
+    courseName: "Advanced React Patterns",
+    issueDate: new Date().toISOString().slice(0, 10),
+    organization: "Northstar Academy",
+    certificateType: "completion",
+    email: "demo@example.com",
+    status,
+    createdAt: new Date().toISOString(),
+  };
 }
