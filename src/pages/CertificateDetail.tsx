@@ -141,7 +141,7 @@ export function CertificateDetail() {
 
       {/* Print Area */}
       <div className="bg-gray-100 p-8 rounded-xl border border-gray-200 flex justify-center overflow-x-auto print:bg-white print:p-0 print:border-none print:m-0 print:block">
-        <div className="print-container transform origin-top-left md:scale-100 sm:scale-75 scale-50 print:scale-100">
+        <div className="print-container origin-top-left">
           <CertificatePreview
             certificate={cert}
             baseUrl={window.location.origin}

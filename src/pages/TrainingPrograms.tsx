@@ -99,7 +99,7 @@ export function TrainingPrograms() {
               label="Organization"
               value={form.organization}
               onChange={(v) => update("organization", v)}
-              placeholder="Northstar Academy"
+              placeholder="KBZ Bank"
             />
             <Field
               label="Start date"

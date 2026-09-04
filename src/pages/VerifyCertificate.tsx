@@ -212,7 +212,7 @@ export function VerifyCertificate() {
 
             {/* Certificate Preview */}
             <div className="bg-gray-100 p-8 rounded-2xl border border-gray-200 flex justify-center overflow-x-auto shadow-inner">
-              <div className="transform origin-top-left md:scale-100 sm:scale-75 scale-50">
+              <div className="origin-top-left">
                 <CertificatePreview certificate={cert} />
               </div>
             </div>
@@ -249,7 +249,7 @@ function createPocCertificate(token: string): Certificate {
     certificateTitle: "Certificate of Completion",
     courseName: "Advanced React Patterns",
     issueDate: new Date().toISOString().slice(0, 10),
-    organization: "Northstar Academy",
+    organization: "KBZ Bank",
     certificateType: "completion",
     email: "demo@example.com",
     status,

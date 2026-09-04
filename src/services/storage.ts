@@ -115,7 +115,7 @@ export const storage = {
       { id: 'u-approver-2', name: 'Sarah Wilson', email: 'sarah@example.com', role: 'APPROVER' },
     ];
     const template: CertificateTemplate = { id: 'tpl-modern', name: 'Modern Professional', description: 'A clean, editorial certificate for professional learning.', design: 'classic', status: 'ACTIVE', createdBy: 'u-admin', createdAt: now(), updatedAt: now() };
-    const training: TrainingProgram = { id: 'training-react', name: 'Advanced React Patterns', description: 'Production patterns for modern React applications.', trainingCode: 'REACT-26', organization: 'Northstar Academy', startDate: '2026-08-12', endDate: '2026-08-15', duration: '32 hours', location: 'Remote', trainingType: 'Professional development', trainerIds: ['u-trainer'], approverIds: ['u-approver', 'u-approver-2'], certificateTemplateId: template.id, status: 'COMPLETED', createdAt: now() };
+    const training: TrainingProgram = { id: 'training-react', name: 'Advanced React Patterns', description: 'Production patterns for modern React applications.', trainingCode: 'REACT-26', organization: 'KBZ BANK', startDate: '2026-08-12', endDate: '2026-08-15', duration: '32 hours', location: 'Remote', trainingType: 'Professional development', trainerIds: ['u-trainer'], approverIds: ['u-approver', 'u-approver-2'], certificateTemplateId: template.id, status: 'COMPLETED', createdAt: now() };
     write(KEYS.users, users); write(KEYS.templates, [template]); write(KEYS.trainings, [training]);
     write(KEYS.trainees, [
       { id: 'trainee-1', trainingProgramId: training.id, recipientName: 'Alice Johnson', email: 'alice@example.com', employeeId: 'EMP-1042', trainingCode: 'REACT-26', department: 'Engineering', createdAt: now() },
