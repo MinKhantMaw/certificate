@@ -1,14 +1,21 @@
-import { QRCodeSVG } from 'qrcode.react';
-import { Certificate } from '../types';
-import { formatDate } from '../utils';
+import { QRCodeSVG } from "qrcode.react";
+import { Certificate } from "../types";
+import { formatDate, getVerificationUrl } from "../utils";
 
-export function CertificatePreview({ certificate, baseUrl }: { certificate: Certificate; baseUrl?: string }) {
-  const origin = baseUrl || (typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost:3000');
-  const verificationUrl = certificate.verificationUrl || `${origin}/verify/${certificate.verificationToken}`;
+export function CertificatePreview({
+  certificate,
+  baseUrl,
+}: {
+  certificate: Certificate;
+  baseUrl?: string;
+}) {
+  const verificationUrl = getVerificationUrl(certificate.verificationToken);
 
   return (
-    <div className="w-full max-w-[800px] aspect-[1.414/1] bg-white border-[12px] border-double border-gray-300 p-12 relative shadow-lg mx-auto flex flex-col justify-between" id="printable-certificate">
-      
+    <div
+      className="w-full max-w-[800px] aspect-[1.414/1] bg-white border-[12px] border-double border-gray-300 p-12 relative shadow-lg mx-auto flex flex-col justify-between"
+      id="printable-certificate"
+    >
       {/* Background decoration */}
       <div className="absolute inset-0 m-4 border border-gray-200 opacity-50 pointer-events-none"></div>
 
@@ -34,7 +41,8 @@ export function CertificatePreview({ certificate, baseUrl }: { certificate: Cert
           {certificate.recipientName}
         </p>
         <p className="text-gray-600 max-w-lg mx-auto">
-          for successfully completing the <strong>{certificate.certificateType}</strong> requirements in
+          for successfully completing the{" "}
+          <strong>{certificate.certificateType}</strong> requirements in
         </p>
         <p className="text-2xl font-medium text-gray-800">
           {certificate.courseName}
@@ -45,35 +53,47 @@ export function CertificatePreview({ certificate, baseUrl }: { certificate: Cert
       <div className="flex justify-between items-end relative z-10 mt-8">
         <div className="text-center w-48">
           <div className="border-b border-gray-400 pb-1 mb-2">
-            <span className="text-gray-800 italic font-serif text-xl signature-font">Authorized Signature</span>
+            <span className="text-gray-800 italic font-serif text-xl signature-font">
+              Authorized Signature
+            </span>
           </div>
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Authorized Signature</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wider">
+            Authorized Signature
+          </p>
         </div>
 
         <div className="flex flex-col items-center">
-          <a 
-            href={verificationUrl} 
-            target="_blank" 
-            rel="noreferrer" 
+          <a
+            href={verificationUrl}
+            target="_blank"
+            rel="noreferrer"
             title={`Scan or click to verify: ${verificationUrl}`}
             className="bg-white p-2 border border-gray-200 mb-1 inline-block hover:border-blue-500 hover:shadow transition-all group"
           >
             <QRCodeSVG value={verificationUrl} size={84} level="M" />
           </a>
-          <span className="text-[10px] text-gray-400 font-medium">Scan to Verify</span>
+          <span className="text-[10px] text-gray-400 font-medium">
+            Scan to Verify
+          </span>
         </div>
 
         <div className="text-center w-48">
           <div className="border-b border-gray-400 pb-1 mb-2">
-            <span className="text-gray-800 font-medium">{formatDate(certificate.issueDate)}</span>
+            <span className="text-gray-800 font-medium">
+              {formatDate(certificate.issueDate)}
+            </span>
           </div>
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Date of Issue</p>
-          <p className="text-[10px] text-gray-400 mt-4">ID: {certificate.certificateNumber || certificate.id}</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wider">
+            Date of Issue
+          </p>
+          <p className="text-[10px] text-gray-400 mt-4">
+            ID: {certificate.certificateNumber || certificate.id}
+          </p>
         </div>
       </div>
-      
+
       {/* Watermark Status */}
-      {certificate.status === 'REVOKED' && (
+      {certificate.status === "REVOKED" && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 overflow-hidden">
           <div className="border-8 border-red-500 text-red-500 text-8xl font-bold uppercase opacity-30 transform -rotate-45 px-8 py-2">
             REVOKED

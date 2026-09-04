@@ -10,6 +10,17 @@ export function generateCertificateNumber(index: number): string {
   return `CERT-${year}-${String(index).padStart(6, '0')}`;
 }
 
+export function getPublicOrigin(): string {
+  const configuredOrigin = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_PUBLIC_APP_URL;
+  if (configuredOrigin) return configuredOrigin.replace(/\/$/, '');
+  if (typeof window !== 'undefined' && window.location.origin) return window.location.origin;
+  return 'http://localhost:3000';
+}
+
+export function getVerificationUrl(token: string): string {
+  return `${getPublicOrigin()}/verify/${encodeURIComponent(token)}`;
+}
+
 export function formatDate(dateString: string): string {
   if (!dateString) return '';
   const date = new Date(dateString);

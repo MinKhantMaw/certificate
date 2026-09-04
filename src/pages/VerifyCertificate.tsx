@@ -4,7 +4,7 @@ import { storage } from "../services/storage";
 import { Certificate } from "../types";
 import { CertificatePreview } from "../components/CertificatePreview";
 import { CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
-import { formatDate } from "../utils";
+import { formatDate, getVerificationUrl } from "../utils";
 
 export function VerifyCertificate() {
   const { verificationToken } = useParams<{ verificationToken: string }>();
@@ -225,19 +225,26 @@ export function VerifyCertificate() {
 
 function createPocCertificate(token: string): Certificate {
   const normalizedToken = token.toLowerCase();
-  const status = normalizedToken.includes("failed") || normalizedToken.includes("invalid")
-    ? "REJECTED"
-    : normalizedToken.includes("revoked")
-      ? "REVOKED"
-      : normalizedToken.includes("pending")
-        ? "PENDING_APPROVAL"
-        : "VALID";
+  const tokenHash = Array.from(normalizedToken).reduce(
+    (total, character) => total + character.charCodeAt(0),
+    0,
+  );
+  const status =
+    normalizedToken.includes("failed") ||
+    normalizedToken.includes("invalid") ||
+    tokenHash % 2 === 1
+      ? "REJECTED"
+      : normalizedToken.includes("revoked")
+        ? "REVOKED"
+        : normalizedToken.includes("pending")
+          ? "PENDING_APPROVAL"
+          : "VALID";
 
   return {
     id: `POC-${token.slice(0, 8).toUpperCase()}`,
     certificateNumber: `POC-${token.slice(0, 8).toUpperCase()}`,
     verificationToken: token,
-    verificationUrl: `${window.location.origin}/verify/${encodeURIComponent(token)}`,
+    verificationUrl: getVerificationUrl(token),
     recipientName: "Demo Certificate Holder",
     certificateTitle: "Certificate of Completion",
     courseName: "Advanced React Patterns",

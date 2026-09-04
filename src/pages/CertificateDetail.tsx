@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { storage } from "../services/storage";
 import { Certificate } from "../types";
 import { CertificatePreview } from "../components/CertificatePreview";
+import { getVerificationUrl } from "../utils";
 import {
   ArrowLeft,
   Download,
@@ -47,9 +48,7 @@ export function CertificateDetail() {
     );
   }
 
-  const verifyUrl =
-    cert.verificationUrl ||
-    `${window.location.origin}/verify/${cert.verificationToken}`;
+  const verifyUrl = getVerificationUrl(cert.verificationToken);
 
   return (
     <div className="space-y-6">

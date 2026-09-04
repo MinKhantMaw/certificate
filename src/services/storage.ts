@@ -1,10 +1,10 @@
 import { AuditLog, Certificate, CertificateApproval, CertificateTemplate, ImportBatch, ImportRecord, PendingImportTrainee, Trainee, TrainingProgram, User, UserRole } from '../types';
+import { getVerificationUrl } from '../utils';
 
 const KEYS = { users: 'cms_users', templates: 'cms_templates', trainings: 'cms_trainings', trainees: 'cms_trainees', certificates: 'cms_certificates', approvals: 'cms_approvals', imports: 'cms_imports', importBatches: 'cms_import_batches', pendingImportTrainees: 'cms_pending_import_trainees', audit: 'cms_audit', auth: 'cms_auth' } as const;
 const read = <T>(key: string, fallback: T): T => { try { return JSON.parse(localStorage.getItem(key) || '') as T; } catch { return fallback; } };
 const write = <T>(key: string, value: T) => localStorage.setItem(key, JSON.stringify(value));
 const now = () => new Date().toISOString();
-const baseUrl = () => typeof window === 'undefined' ? 'http://localhost:3000' : window.location.origin;
 
 export const storage = {
   login: (email: string, role: UserRole = 'ADMIN'): User => { const user = storage.getUsers().find(item => item.email === email) || { id: crypto.randomUUID(), email, name: email.split('@')[0], role }; write(KEYS.auth, user); return user; },
@@ -91,7 +91,7 @@ export const storage = {
     const certificates: Certificate[] = trainees.filter(trainee => !storage.getCertificates().some(cert => cert.traineeId === trainee.id)).map((trainee, index) => {
       const number = `CERT-${new Date().getFullYear()}-${String(storage.getNextCertificateIndex() + index).padStart(6, '0')}`;
       const token = crypto.randomUUID();
-      return { id: number, certificateNumber: number, verificationToken: token, verificationUrl: `${baseUrl()}/verify/${token}`, recipientName: trainee.recipientName, certificateTitle: 'Certificate of Completion', courseName: program.name, issueDate: program.endDate || timestamp.slice(0, 10), organization: program.organization, certificateType: 'completion', email: trainee.email, status: 'PENDING_APPROVAL', trainingProgramId, traineeId: trainee.id, trainerIds: program.trainerIds, approverIds: program.approverIds, createdAt: timestamp };
+      return { id: number, certificateNumber: number, verificationToken: token, verificationUrl: getVerificationUrl(token), recipientName: trainee.recipientName, certificateTitle: 'Certificate of Completion', courseName: program.name, issueDate: program.endDate || timestamp.slice(0, 10), organization: program.organization, certificateType: 'completion', email: trainee.email, status: 'PENDING_APPROVAL', trainingProgramId, traineeId: trainee.id, trainerIds: program.trainerIds, approverIds: program.approverIds, createdAt: timestamp };
     });
     storage.saveCertificates(certificates);
     storage.saveApprovals(certificates.flatMap(cert => program.approverIds.map((approverId, index): CertificateApproval => ({ id: `${cert.id}-approval-${index}`, certificateId: cert.id, approverId, status: 'PENDING', createdAt: timestamp, updatedAt: timestamp }))));
@@ -122,9 +122,9 @@ export const storage = {
       { id: 'trainee-2', trainingProgramId: training.id, recipientName: 'Bob Smith', email: 'bob@example.com', employeeId: 'EMP-1043', trainingCode: 'REACT-26', department: 'Product', createdAt: now() },
     ] as Trainee[]);
     const token = '00000000-0000-4000-8000-000000000001';
-    const certificate: Certificate = { id: 'CERT-2026-000001', certificateNumber: 'CERT-2026-000001', verificationToken: token, verificationUrl: `${baseUrl()}/verify/${token}`, recipientName: 'Alice Johnson', certificateTitle: 'Certificate of Completion', courseName: training.name, issueDate: '2026-08-15', organization: training.organization, certificateType: 'completion', email: 'alice@example.com', status: 'VALID', trainingProgramId: training.id, traineeId: 'trainee-1', trainerIds: training.trainerIds, approverIds: training.approverIds, createdAt: now() };
+    const certificate: Certificate = { id: 'CERT-2026-000001', certificateNumber: 'CERT-2026-000001', verificationToken: token, verificationUrl: getVerificationUrl(token), recipientName: 'Alice Johnson', certificateTitle: 'Certificate of Completion', courseName: training.name, issueDate: '2026-08-15', organization: training.organization, certificateType: 'completion', email: 'alice@example.com', status: 'VALID', trainingProgramId: training.id, traineeId: 'trainee-1', trainerIds: training.trainerIds, approverIds: training.approverIds, createdAt: now() };
     const pendingToken = '00000000-0000-4000-8000-000000000002';
-    const pending: Certificate = { ...certificate, id: 'CERT-2026-000002', certificateNumber: 'CERT-2026-000002', verificationToken: pendingToken, verificationUrl: `${baseUrl()}/verify/${pendingToken}`, recipientName: 'Bob Smith', email: 'bob@example.com', traineeId: 'trainee-2', status: 'PENDING_APPROVAL' };
+    const pending: Certificate = { ...certificate, id: 'CERT-2026-000002', certificateNumber: 'CERT-2026-000002', verificationToken: pendingToken, verificationUrl: getVerificationUrl(pendingToken), recipientName: 'Bob Smith', email: 'bob@example.com', traineeId: 'trainee-2', status: 'PENDING_APPROVAL' };
     write(KEYS.certificates, [certificate, pending]);
     const approvals: CertificateApproval[] = training.approverIds.map((approverId, index): CertificateApproval => ({ id: `approval-${index}`, certificateId: certificate.id, approverId, status: 'APPROVED', approvedAt: now(), createdAt: now(), updatedAt: now() })).concat(training.approverIds.map((approverId, index): CertificateApproval => ({ id: `pending-approval-${index}`, certificateId: pending.id, approverId, status: 'PENDING', createdAt: now(), updatedAt: now() })));
     write(KEYS.approvals, approvals);
