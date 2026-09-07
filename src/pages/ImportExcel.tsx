@@ -20,8 +20,12 @@ export function ImportExcel() {
   const program = trainingProgramId
     ? storage.getTraining(trainingProgramId)
     : undefined;
-  const templates = storage.getTemplates().filter((item) => item.status === "ACTIVE");
-  const [selectedTemplateId, setSelectedTemplateId] = useState(program?.certificateTemplateId || "");
+  const templates = storage
+    .getTemplates()
+    .filter((item) => item.status === "ACTIVE");
+  const [selectedTemplateId, setSelectedTemplateId] = useState(
+    program?.certificateTemplateId || "",
+  );
   const [step, setStep] = useState<ImportStep>("UPLOAD");
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<ImportedRow[]>([]);
@@ -42,9 +46,14 @@ export function ImportExcel() {
         const template = selectedTemplateId
           ? templates.find((item) => item.id === selectedTemplateId)
           : undefined;
-        if (!template) throw new Error("Select an active certificate template before uploading Excel.");
+        if (!template)
+          throw new Error(
+            "Select an active certificate template before uploading Excel.",
+          );
         const templateKeys = getTemplateKeys(template?.layout);
-        const required = templateKeys.length ? [] : ["recipient_name", "email", "training_code"];
+        const required = templateKeys.length
+          ? []
+          : ["recipient_name", "email", "training_code"];
         const seen = new Set<string>();
         const parsed = rawRows.map((row) => {
           const code = String(row.training_code || "").trim();
@@ -57,12 +66,20 @@ export function ImportExcel() {
               course: ["course", "course_name"],
               course_name: ["course_name", "course"],
             };
-            return String((aliases[key] || [key]).map((candidate) => row[candidate]).find((value) => value !== undefined) ?? row[key.replace("_", " ")] ?? "").trim();
+            return String(
+              (aliases[key] || [key])
+                .map((candidate) => row[candidate])
+                .find((value) => value !== undefined) ??
+                row[key.replace("_", " ")] ??
+                "",
+            ).trim();
           };
           const errors = required
             .filter((column) => !valueFor(column))
             .map((column) => `Missing ${column}`);
-          templateKeys.filter((key) => !valueFor(key)).forEach((key) => errors.push(`Missing template field ${key}`));
+          templateKeys
+            .filter((key) => !valueFor(key))
+            .forEach((key) => errors.push(`Missing template field ${key}`));
           if (code && program && code !== program.trainingCode)
             errors.push(
               "The training code in the Excel file does not match the selected Training Program.",
@@ -72,9 +89,16 @@ export function ImportExcel() {
           const duplicateKey = `${email.toLowerCase()}|${code}`;
           if (seen.has(duplicateKey)) errors.push("Duplicate trainee");
           seen.add(duplicateKey);
-          const dynamicData = Object.fromEntries(Object.entries(row).map(([key, value]) => [key.trim().toLowerCase(), typeof value === "number" ? value : String(value ?? "").trim()])) as Record<string, string | number>;
-          if (!dynamicData.name && dynamicData.recipient_name) dynamicData.name = dynamicData.recipient_name;
-          if (!dynamicData.course && dynamicData.course_name) dynamicData.course = dynamicData.course_name;
+          const dynamicData = Object.fromEntries(
+            Object.entries(row).map(([key, value]) => [
+              key.trim().toLowerCase(),
+              typeof value === "number" ? value : String(value ?? "").trim(),
+            ]),
+          ) as Record<string, string | number>;
+          if (!dynamicData.name && dynamicData.recipient_name)
+            dynamicData.name = dynamicData.recipient_name;
+          if (!dynamicData.course && dynamicData.course_name)
+            dynamicData.course = dynamicData.course_name;
           return {
             recipient_name: name,
             email,
@@ -208,7 +232,11 @@ export function ImportExcel() {
         </select>
         {selectedTemplateId && (
           <span className="mt-1 block text-xs font-normal text-slate-500">
-            Using {templates.find((template) => template.id === selectedTemplateId)?.name}
+            Using{" "}
+            {
+              templates.find((template) => template.id === selectedTemplateId)
+                ?.name
+            }
           </span>
         )}
       </label>

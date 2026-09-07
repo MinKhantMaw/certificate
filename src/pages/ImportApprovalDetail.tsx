@@ -17,7 +17,9 @@ export function ImportApprovalDetail() {
       </div>
     );
   const program = storage.getTraining(batch.trainingProgramId);
-  const template = storage.getTemplates().find((item) => item.id === batch.templateId);
+  const template = storage
+    .getTemplates()
+    .find((item) => item.id === batch.templateId);
   const rows = storage.getPendingImportTrainees(batch.id);
   const review = (action: "approve" | "reject") => {
     try {

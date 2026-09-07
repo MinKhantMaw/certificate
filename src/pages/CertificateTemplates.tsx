@@ -1,9 +1,20 @@
 import { FormEvent, useState } from "react";
-import { Edit3, Palette, Plus, Trash2, ToggleLeft, ToggleRight, X } from "lucide-react";
+import {
+  Edit3,
+  Palette,
+  Plus,
+  Trash2,
+  ToggleLeft,
+  ToggleRight,
+  X,
+} from "lucide-react";
 import { storage } from "../services/storage";
 import { CertificateTemplate, TemplateLayout } from "../types";
 import { getTemplateKeys } from "../utils";
-import { createDefaultLayout, TemplateBuilder } from "../components/TemplateBuilder";
+import {
+  createDefaultLayout,
+  TemplateBuilder,
+} from "../components/TemplateBuilder";
 
 export function CertificateTemplates() {
   const [templates, setTemplates] = useState(storage.getTemplates());
@@ -39,22 +50,50 @@ export function CertificateTemplates() {
   const save = (event: FormEvent) => {
     event.preventDefault();
     const keys = getTemplateKeys(layout);
-    const invalidText = layout.elements.some((element) => element.type === "text" && !element.key?.trim());
-    const invalidSignature = layout.elements.some((element) => element.type === "signature" && !element.signatureId);
-    const duplicateIds = new Set(layout.elements.map((element) => element.id)).size !== layout.elements.length;
+    const invalidText = layout.elements.some(
+      (element) => element.type === "text" && !element.key?.trim(),
+    );
+    const invalidSignature = layout.elements.some(
+      (element) => element.type === "signature" && !element.signatureId,
+    );
+    const duplicateIds =
+      new Set(layout.elements.map((element) => element.id)).size !==
+      layout.elements.length;
     if (!name.trim()) return setError("Template name is required.");
-    if (invalidText) return setError("Every text element needs a placeholder key.");
-    if (invalidSignature) return setError("Every signature element must reference a signature.");
-    if (duplicateIds || layout.canvas.width < 100 || layout.canvas.height < 100) return setError("The template layout is invalid.");
-    if (!keys.length && !layout.elements.length) return setError("Add at least one element to the template.");
+    if (invalidText)
+      return setError("Every text element needs a placeholder key.");
+    if (invalidSignature)
+      return setError("Every signature element must reference a signature.");
+    if (duplicateIds || layout.canvas.width < 100 || layout.canvas.height < 100)
+      return setError("The template layout is invalid.");
+    if (!keys.length && !layout.elements.length)
+      return setError("Add at least one element to the template.");
     setError("");
     const timestamp = new Date().toISOString();
     if (editingId) {
       const existing = templates.find((item) => item.id === editingId);
       if (!existing) return;
-      storage.updateTemplate({ ...existing, name: name.trim(), description: description.trim(), previewImage: layout.background || previewImage, layout, updatedAt: timestamp });
+      storage.updateTemplate({
+        ...existing,
+        name: name.trim(),
+        description: description.trim(),
+        previewImage: layout.background || previewImage,
+        layout,
+        updatedAt: timestamp,
+      });
     } else {
-      storage.saveTemplate({ id: crypto.randomUUID(), name: name.trim(), description: description.trim(), previewImage: layout.background || previewImage, layout, design: "konva", status: "ACTIVE", createdBy: storage.getUser()?.id || "u-admin", createdAt: timestamp, updatedAt: timestamp });
+      storage.saveTemplate({
+        id: crypto.randomUUID(),
+        name: name.trim(),
+        description: description.trim(),
+        previewImage: layout.background || previewImage,
+        layout,
+        design: "konva",
+        status: "ACTIVE",
+        createdBy: storage.getUser()?.id || "u-admin",
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
     }
     setTemplates(storage.getTemplates());
     resetForm();
@@ -68,8 +107,14 @@ export function CertificateTemplates() {
     setTemplates(storage.getTemplates());
   };
   const remove = (template: CertificateTemplate) => {
-    if (storage.getTrainings().some((program) => program.certificateTemplateId === template.id)) {
-      window.alert("This template is assigned to a training program and cannot be deleted.");
+    if (
+      storage
+        .getTrainings()
+        .some((program) => program.certificateTemplateId === template.id)
+    ) {
+      window.alert(
+        "This template is assigned to a training program and cannot be deleted.",
+      );
       return;
     }
     if (!window.confirm(`Delete the template "${template.name}"?`)) return;
@@ -99,7 +144,10 @@ export function CertificateTemplates() {
         </button>
       </div>
       {showForm && (
-        <form onSubmit={save} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <form
+          onSubmit={save}
+          className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-sm font-medium text-slate-700">
               Template name
@@ -120,11 +168,28 @@ export function CertificateTemplates() {
               />
             </label>
           </div>
-          <TemplateBuilder key={editingId || "draft"} template={{ id: editingId || "draft", name, description, design: "konva", status: "ACTIVE", createdBy: storage.getUser()?.id || "u-admin", createdAt: "", updatedAt: "", previewImage, layout }} onChange={setLayout} />
-          {error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          <button
-            className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white"
-          >
+          <TemplateBuilder
+            key={editingId || "draft"}
+            template={{
+              id: editingId || "draft",
+              name,
+              description,
+              design: "konva",
+              status: "ACTIVE",
+              createdBy: storage.getUser()?.id || "u-admin",
+              createdAt: "",
+              updatedAt: "",
+              previewImage,
+              layout,
+            }}
+            onChange={setLayout}
+          />
+          {error && (
+            <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </p>
+          )}
+          <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white">
             {editingId ? "Save changes" : "Create template"}
           </button>
         </form>
@@ -136,7 +201,14 @@ export function CertificateTemplates() {
             className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
           >
             <div className="relative flex aspect-[1.45] items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-teal-900 to-amber-200 p-5">
-              {template.previewImage && <img src={template.previewImage} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-30" />}
+              {template.previewImage && (
+                <img
+                  src={template.previewImage}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 h-full w-full object-cover opacity-30"
+                />
+              )}
               <div className="flex h-full w-full flex-col items-center justify-center border border-white/50 text-center text-white">
                 <Palette size={20} />
                 <p className="mt-3 text-xs uppercase tracking-[0.25em]">
@@ -167,10 +239,35 @@ export function CertificateTemplates() {
               <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-sm">
                 <span className="text-slate-400">Dynamic fields supported</span>
                 <div className="flex items-center gap-3">
-                  <button type="button" onClick={() => openEdit(template)} className="text-slate-500" aria-label={`Edit ${template.name}`} title="Edit template"><Edit3 size={17} /></button>
-                  <button type="button" onClick={() => remove(template)} className="text-slate-500" aria-label={`Delete ${template.name}`} title="Delete template"><Trash2 size={17} /></button>
-                  <button type="button" onClick={() => toggle(template)} className="text-teal-700" aria-label={`${template.status === "ACTIVE" ? "Deactivate" : "Activate"} ${template.name}`}>
-                    {template.status === "ACTIVE" ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                  <button
+                    type="button"
+                    onClick={() => openEdit(template)}
+                    className="text-slate-500"
+                    aria-label={`Edit ${template.name}`}
+                    title="Edit template"
+                  >
+                    <Edit3 size={17} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => remove(template)}
+                    className="text-slate-500"
+                    aria-label={`Delete ${template.name}`}
+                    title="Delete template"
+                  >
+                    <Trash2 size={17} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggle(template)}
+                    className="text-teal-700"
+                    aria-label={`${template.status === "ACTIVE" ? "Deactivate" : "Activate"} ${template.name}`}
+                  >
+                    {template.status === "ACTIVE" ? (
+                      <ToggleRight size={24} />
+                    ) : (
+                      <ToggleLeft size={24} />
+                    )}
                   </button>
                 </div>
               </div>

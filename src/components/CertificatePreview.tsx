@@ -15,11 +15,19 @@ export function CertificatePreview({
     certificate.verificationUrl ||
     getVerificationUrl(certificate.verificationToken);
   const template = certificate.certificateTemplateId
-    ? storage.getTemplates().find((item) => item.id === certificate.certificateTemplateId)
+    ? storage
+        .getTemplates()
+        .find((item) => item.id === certificate.certificateTemplateId)
     : undefined;
 
   if (template?.layout) {
-    return <DynamicCertificatePreview certificate={certificate} layout={template.layout} verificationUrl={verificationUrl} />;
+    return (
+      <DynamicCertificatePreview
+        certificate={certificate}
+        layout={template.layout}
+        verificationUrl={verificationUrl}
+      />
+    );
   }
 
   return (
@@ -154,14 +162,23 @@ export function CertificatePreview({
   );
 }
 
-function DynamicCertificatePreview({ certificate, layout, verificationUrl }: { certificate: Certificate; layout: TemplateLayout; verificationUrl: string }) {
+function DynamicCertificatePreview({
+  certificate,
+  layout,
+  verificationUrl,
+}: {
+  certificate: Certificate;
+  layout: TemplateLayout;
+  verificationUrl: string;
+}) {
   const data: Record<string, unknown> = {
     ...certificate.dynamicData,
     name: certificate.dynamicData?.name || certificate.recipientName,
     recipient_name: certificate.recipientName,
     course: certificate.dynamicData?.course || certificate.courseName,
     course_name: certificate.courseName,
-    certificate_id: certificate.dynamicData?.certificate_id || certificate.certificateNumber,
+    certificate_id:
+      certificate.dynamicData?.certificate_id || certificate.certificateNumber,
     issue_date: certificate.dynamicData?.issue_date || certificate.issueDate,
     department: certificate.dynamicData?.department || "",
   };
@@ -177,15 +194,97 @@ function DynamicCertificatePreview({ certificate, layout, verificationUrl }: { c
     transformOrigin: "center",
   });
   return (
-    <div id="printable-certificate" className="relative mx-auto w-full max-w-[1123px] overflow-hidden bg-white shadow-lg" style={{ aspectRatio }}>
-      {layout.background && <img src={layout.background} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />}
+    <div
+      id="printable-certificate"
+      className="relative mx-auto w-full max-w-[1123px] overflow-hidden bg-white shadow-lg"
+      style={{ aspectRatio }}
+    >
+      {layout.background && (
+        <img
+          src={layout.background}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      )}
       {layout.elements.map((element) => {
         const style = styleFor(element);
-        if (element.type === "text") return <div key={element.id} style={{ ...style, color: element.style?.color, fontFamily: element.style?.fontFamily, fontSize: `${(element.style?.fontSize || 16) * (layout.canvas.width / 1123)}px`, fontWeight: element.style?.fontWeight, lineHeight: element.style?.lineHeight || 1.2, textAlign: element.style?.align, display: "flex", alignItems: "center", justifyContent: element.style?.align === "center" ? "center" : element.style?.align === "right" ? "flex-end" : "flex-start", whiteSpace: "pre-wrap", overflow: "hidden", padding: 8 }}>{resolveTemplateValue(element, data)}</div>;
-        if (element.type === "shape") return <div key={element.id} style={{ ...style, background: element.fill, border: `1px solid ${element.stroke || "transparent"}` }} />;
-        if (element.type === "qr") return <div key={element.id} style={{ ...style, display: "flex", alignItems: "center", justifyContent: "center", background: "white" }}><QRCodeSVG value={verificationUrl} width="100%" height="100%" level="M" /></div>;
-        const source = element.type === "signature" ? signatures.find((user) => user.id === element.signatureId)?.signatureImage : element.src;
-        return source ? <img key={element.id} src={source} alt={element.type === "signature" ? "Certificate signature" : "Certificate artwork"} style={{ ...style, objectFit: "contain" }} /> : null;
+        if (element.type === "text")
+          return (
+            <div
+              key={element.id}
+              style={{
+                ...style,
+                color: element.style?.color,
+                fontFamily: element.style?.fontFamily,
+                fontSize: `${(element.style?.fontSize || 16) * (layout.canvas.width / 1123)}px`,
+                fontWeight: element.style?.fontWeight,
+                lineHeight: element.style?.lineHeight || 1.2,
+                textAlign: element.style?.align,
+                display: "flex",
+                alignItems: "center",
+                justifyContent:
+                  element.style?.align === "center"
+                    ? "center"
+                    : element.style?.align === "right"
+                      ? "flex-end"
+                      : "flex-start",
+                whiteSpace: "pre-wrap",
+                overflow: "hidden",
+                padding: 8,
+              }}
+            >
+              {resolveTemplateValue(element, data)}
+            </div>
+          );
+        if (element.type === "shape")
+          return (
+            <div
+              key={element.id}
+              style={{
+                ...style,
+                background: element.fill,
+                border: `1px solid ${element.stroke || "transparent"}`,
+              }}
+            />
+          );
+        if (element.type === "qr")
+          return (
+            <div
+              key={element.id}
+              style={{
+                ...style,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "white",
+              }}
+            >
+              <QRCodeSVG
+                value={verificationUrl}
+                width="100%"
+                height="100%"
+                level="M"
+              />
+            </div>
+          );
+        const source =
+          element.type === "signature"
+            ? signatures.find((user) => user.id === element.signatureId)
+                ?.signatureImage
+            : element.src;
+        return source ? (
+          <img
+            key={element.id}
+            src={source}
+            alt={
+              element.type === "signature"
+                ? "Certificate signature"
+                : "Certificate artwork"
+            }
+            style={{ ...style, objectFit: "contain" }}
+          />
+        ) : null;
       })}
     </div>
   );
