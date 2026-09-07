@@ -1,30 +1,63 @@
-import { useState } from "react";
-import { Palette, Plus, ToggleLeft, ToggleRight } from "lucide-react";
+import { FormEvent, useState } from "react";
+import { Edit3, Palette, Plus, Trash2, ToggleLeft, ToggleRight, X } from "lucide-react";
 import { storage } from "../services/storage";
-import { CertificateTemplate } from "../types";
+import { CertificateTemplate, TemplateLayout } from "../types";
+import { getTemplateKeys } from "../utils";
+import { createDefaultLayout, TemplateBuilder } from "../components/TemplateBuilder";
 
 export function CertificateTemplates() {
   const [templates, setTemplates] = useState(storage.getTemplates());
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const save = () => {
-    if (!name.trim()) return;
-    const template: CertificateTemplate = {
-      id: crypto.randomUUID(),
-      name,
-      description,
-      design: "classic",
-      status: "ACTIVE",
-      createdBy: storage.getUser()?.id || "u-admin",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    storage.saveTemplate(template);
-    setTemplates(storage.getTemplates());
+  const [previewImage, setPreviewImage] = useState<string | undefined>();
+  const [layout, setLayout] = useState<TemplateLayout>(createDefaultLayout);
+  const [error, setError] = useState("");
+  const resetForm = () => {
     setName("");
     setDescription("");
+    setPreviewImage(undefined);
+    setEditingId(null);
+    setLayout(createDefaultLayout());
+    setError("");
     setShowForm(false);
+  };
+  const openCreate = () => {
+    resetForm();
+    setShowForm(true);
+  };
+  const openEdit = (template: CertificateTemplate) => {
+    setEditingId(template.id);
+    setName(template.name);
+    setDescription(template.description);
+    setPreviewImage(template.previewImage);
+    setLayout(template.layout || createDefaultLayout());
+    setError("");
+    setShowForm(true);
+  };
+  const save = (event: FormEvent) => {
+    event.preventDefault();
+    const keys = getTemplateKeys(layout);
+    const invalidText = layout.elements.some((element) => element.type === "text" && !element.key?.trim());
+    const invalidSignature = layout.elements.some((element) => element.type === "signature" && !element.signatureId);
+    const duplicateIds = new Set(layout.elements.map((element) => element.id)).size !== layout.elements.length;
+    if (!name.trim()) return setError("Template name is required.");
+    if (invalidText) return setError("Every text element needs a placeholder key.");
+    if (invalidSignature) return setError("Every signature element must reference a signature.");
+    if (duplicateIds || layout.canvas.width < 100 || layout.canvas.height < 100) return setError("The template layout is invalid.");
+    if (!keys.length && !layout.elements.length) return setError("Add at least one element to the template.");
+    setError("");
+    const timestamp = new Date().toISOString();
+    if (editingId) {
+      const existing = templates.find((item) => item.id === editingId);
+      if (!existing) return;
+      storage.updateTemplate({ ...existing, name: name.trim(), description: description.trim(), previewImage: layout.background || previewImage, layout, updatedAt: timestamp });
+    } else {
+      storage.saveTemplate({ id: crypto.randomUUID(), name: name.trim(), description: description.trim(), previewImage: layout.background || previewImage, layout, design: "konva", status: "ACTIVE", createdBy: storage.getUser()?.id || "u-admin", createdAt: timestamp, updatedAt: timestamp });
+    }
+    setTemplates(storage.getTemplates());
+    resetForm();
   };
   const toggle = (template: CertificateTemplate) => {
     storage.updateTemplate({
@@ -32,6 +65,15 @@ export function CertificateTemplates() {
       status: template.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
       updatedAt: new Date().toISOString(),
     });
+    setTemplates(storage.getTemplates());
+  };
+  const remove = (template: CertificateTemplate) => {
+    if (storage.getTrainings().some((program) => program.certificateTemplateId === template.id)) {
+      window.alert("This template is assigned to a training program and cannot be deleted.");
+      return;
+    }
+    if (!window.confirm(`Delete the template "${template.name}"?`)) return;
+    storage.deleteTemplate(template.id);
     setTemplates(storage.getTemplates());
   };
   return (
@@ -49,14 +91,15 @@ export function CertificateTemplates() {
           </p>
         </div>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={showForm ? resetForm : openCreate}
           className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white"
         >
-          <Plus size={17} /> New template
+          {showForm ? <X size={17} /> : <Plus size={17} />}
+          {showForm ? "Cancel" : "New template"}
         </button>
       </div>
       {showForm && (
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <form onSubmit={save} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-sm font-medium text-slate-700">
               Template name
@@ -77,13 +120,14 @@ export function CertificateTemplates() {
               />
             </label>
           </div>
+          <TemplateBuilder key={editingId || "draft"} template={{ id: editingId || "draft", name, description, design: "konva", status: "ACTIVE", createdBy: storage.getUser()?.id || "u-admin", createdAt: "", updatedAt: "", previewImage, layout }} onChange={setLayout} />
+          {error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           <button
-            onClick={save}
             className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white"
           >
-            Create template
+            {editingId ? "Save changes" : "Create template"}
           </button>
-        </div>
+        </form>
       )}
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {templates.map((template) => (
@@ -91,7 +135,8 @@ export function CertificateTemplates() {
             key={template.id}
             className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
           >
-            <div className="flex aspect-[1.45] items-center justify-center bg-gradient-to-br from-slate-950 via-teal-900 to-amber-200 p-5">
+            <div className="relative flex aspect-[1.45] items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-teal-900 to-amber-200 p-5">
+              {template.previewImage && <img src={template.previewImage} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-30" />}
               <div className="flex h-full w-full flex-col items-center justify-center border border-white/50 text-center text-white">
                 <Palette size={20} />
                 <p className="mt-3 text-xs uppercase tracking-[0.25em]">
@@ -121,16 +166,13 @@ export function CertificateTemplates() {
               </div>
               <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-sm">
                 <span className="text-slate-400">Dynamic fields supported</span>
-                <button
-                  onClick={() => toggle(template)}
-                  className="text-teal-700"
-                >
-                  {template.status === "ACTIVE" ? (
-                    <ToggleRight size={24} />
-                  ) : (
-                    <ToggleLeft size={24} />
-                  )}
-                </button>
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={() => openEdit(template)} className="text-slate-500" aria-label={`Edit ${template.name}`} title="Edit template"><Edit3 size={17} /></button>
+                  <button type="button" onClick={() => remove(template)} className="text-slate-500" aria-label={`Delete ${template.name}`} title="Delete template"><Trash2 size={17} /></button>
+                  <button type="button" onClick={() => toggle(template)} className="text-teal-700" aria-label={`${template.status === "ACTIVE" ? "Deactivate" : "Activate"} ${template.name}`}>
+                    {template.status === "ACTIVE" ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

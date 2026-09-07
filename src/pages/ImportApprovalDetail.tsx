@@ -17,6 +17,7 @@ export function ImportApprovalDetail() {
       </div>
     );
   const program = storage.getTraining(batch.trainingProgramId);
+  const template = storage.getTemplates().find((item) => item.id === batch.templateId);
   const rows = storage.getPendingImportTrainees(batch.id);
   const review = (action: "approve" | "reject") => {
     try {
@@ -50,6 +51,7 @@ export function ImportApprovalDetail() {
         </h2>
         <p className="mt-2 text-slate-500">
           {batch.fileName} · {program?.name} · {program?.trainingCode}
+          {template ? ` · ${template.name}` : ""}
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-4">

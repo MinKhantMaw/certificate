@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { TemplateElement, TemplateLayout } from '../types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -30,4 +31,22 @@ export function formatDate(dateString: string): string {
     month: 'long',
     day: 'numeric',
   }).format(date);
+}
+
+export function resolveTemplateValue(
+  element: TemplateElement,
+  data: Record<string, unknown>,
+): string {
+  const key = element.key?.replace(/^\{\{|\}\}$/g, '').trim();
+  if (!key) return '';
+  const value = data[key];
+  if (value === null || value === undefined) return '';
+  return String(value);
+}
+
+export function getTemplateKeys(layout?: TemplateLayout): string[] {
+  return Array.from(new Set((layout?.elements || [])
+    .filter((element) => element.type === 'text' && element.key)
+    .map((element) => element.key!.replace(/^\{\{|\}\}$/g, '').trim())
+    .filter(Boolean)));
 }

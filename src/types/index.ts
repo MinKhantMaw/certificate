@@ -17,11 +17,54 @@ export interface CertificateTemplate {
   name: string;
   description: string;
   previewImage?: string;
+  layout?: TemplateLayout;
   design: string;
   status: 'ACTIVE' | 'INACTIVE';
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type TemplateElementType = 'text' | 'image' | 'signature' | 'qr' | 'shape';
+export type TemplatePageSize = 'A4' | 'BUSINESS_CARD' | 'CUSTOM';
+export type TemplateOrientation = 'portrait' | 'landscape';
+
+export interface TemplateTextStyle {
+  fontFamily: string;
+  fontSize: number;
+  fontWeight: string;
+  color: string;
+  align: 'left' | 'center' | 'right';
+  lineHeight?: number;
+}
+
+export interface TemplateElement {
+  id: string;
+  type: TemplateElementType;
+  key?: string;
+  src?: string;
+  signatureId?: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  style?: TemplateTextStyle;
+  fill?: string;
+  stroke?: string;
+}
+
+export interface TemplateLayout {
+  version: 1;
+  canvas: {
+    width: number;
+    height: number;
+    pageSize: TemplatePageSize;
+    orientation: TemplateOrientation;
+  };
+  background?: string;
+  signatureId?: string;
+  elements: TemplateElement[];
 }
 
 export interface TrainingProgram {
@@ -51,6 +94,7 @@ export interface Trainee {
   department?: string;
   trainingCode: string;
   createdAt: string;
+  dynamicData?: Record<string, string | number>;
 }
 
 export type ImportBatchStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
@@ -58,6 +102,7 @@ export type ImportBatchStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJ
 export interface ImportBatch {
   id: string;
   trainingProgramId: string;
+  templateId?: string;
   fileName: string;
   totalRows: number;
   validRows: number;
@@ -85,6 +130,7 @@ export interface PendingImportTrainee {
   completionDate?: string;
   validationStatus: 'VALID' | 'INVALID';
   validationErrors: string[];
+  dynamicData?: Record<string, string | number>;
 }
 
 export interface CertificateApproval {
@@ -112,6 +158,12 @@ export interface Certificate {
   certificateType: string;
   email: string;
   status: CertificateStatus;
+  certificateTemplateId?: string;
+  signatureUserId?: string;
+  signatureImage?: string;
+  signerName?: string;
+  signerTitle?: string;
+  dynamicData?: Record<string, string | number>;
   trainingProgramId?: string;
   traineeId?: string;
   trainerIds?: string[];
@@ -140,8 +192,11 @@ export interface ImportedRow {
   employee_id?: string;
   training_code?: string;
   department?: string;
+  position?: string;
+  completion_date?: string;
   isValid?: boolean;
   errors?: string[];
+  dynamicData?: Record<string, string | number>;
 }
 
 export interface AuditLog {

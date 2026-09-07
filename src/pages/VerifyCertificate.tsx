@@ -17,6 +17,12 @@ export function VerifyCertificate() {
       : "";
 
     const verifyCertificate = async () => {
+      const localCertificate = storage.getCertificateByToken(decodedToken);
+      if (localCertificate) {
+        setCert(localCertificate);
+        return;
+      }
+
       try {
         const response = await fetch(
           `/api/verify/${encodeURIComponent(decodedToken)}`,
@@ -30,8 +36,7 @@ export function VerifyCertificate() {
       }
 
       storage.initDemoData();
-      const localCertificate = storage.getCertificateByToken(decodedToken);
-      setCert(localCertificate || createPocCertificate(decodedToken));
+      setCert(storage.getCertificateByToken(decodedToken) || null);
     };
 
     verifyCertificate().finally(() => setLoading(false));
@@ -221,38 +226,4 @@ export function VerifyCertificate() {
       </main>
     </div>
   );
-}
-
-function createPocCertificate(token: string): Certificate {
-  const normalizedToken = token.toLowerCase();
-  const tokenHash = Array.from(normalizedToken).reduce(
-    (total, character) => total + character.charCodeAt(0),
-    0,
-  );
-  const status =
-    normalizedToken.includes("failed") ||
-    normalizedToken.includes("invalid") ||
-    tokenHash % 2 === 1
-      ? "REJECTED"
-      : normalizedToken.includes("revoked")
-        ? "REVOKED"
-        : normalizedToken.includes("pending")
-          ? "PENDING_APPROVAL"
-          : "VALID";
-
-  return {
-    id: `POC-${token.slice(0, 8).toUpperCase()}`,
-    certificateNumber: `POC-${token.slice(0, 8).toUpperCase()}`,
-    verificationToken: token,
-    verificationUrl: getVerificationUrl(token),
-    recipientName: "Demo Certificate Holder",
-    certificateTitle: "Certificate of Completion",
-    courseName: "Advanced React Patterns",
-    issueDate: new Date().toISOString().slice(0, 10),
-    organization: "KBZ Bank",
-    certificateType: "completion",
-    email: "demo@example.com",
-    status,
-    createdAt: new Date().toISOString(),
-  };
 }

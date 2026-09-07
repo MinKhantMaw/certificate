@@ -1,6 +1,8 @@
+import type { CSSProperties } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Certificate } from "../types";
-import { formatDate, getVerificationUrl } from "../utils";
+import { storage } from "../services/storage";
+import { Certificate, TemplateElement, TemplateLayout } from "../types";
+import { formatDate, getVerificationUrl, resolveTemplateValue } from "../utils";
 
 export function CertificatePreview({
   certificate,
@@ -12,12 +14,27 @@ export function CertificatePreview({
   const verificationUrl =
     certificate.verificationUrl ||
     getVerificationUrl(certificate.verificationToken);
+  const template = certificate.certificateTemplateId
+    ? storage.getTemplates().find((item) => item.id === certificate.certificateTemplateId)
+    : undefined;
+
+  if (template?.layout) {
+    return <DynamicCertificatePreview certificate={certificate} layout={template.layout} verificationUrl={verificationUrl} />;
+  }
 
   return (
     <div
       className="relative mx-auto aspect-[1.414/1] min-w-[800px] w-full max-w-[1123px] overflow-hidden bg-white font-sans text-[#333] shadow-lg"
       id="printable-certificate"
     >
+      {template?.previewImage && (
+        <img
+          src={template.previewImage}
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-15"
+        />
+      )}
       <div className="absolute left-0 top-0 h-[33%] w-[21%] overflow-hidden">
         <div className="absolute -left-[8%] -top-[10%] h-[48%] w-[54%] rotate-45 bg-[#ed1c2b]" />
         <div className="absolute -left-[14%] top-[10%] h-[42%] w-[48%] rotate-45 bg-[#a71920]" />
@@ -46,6 +63,9 @@ export function CertificatePreview({
           </div>
           <div className="mt-1 text-[clamp(5px,.65vw,8px)] font-bold tracking-[.35em] text-[#19427e]">
             STRENGTH OF MYANMAR
+          </div>
+          <div className="mt-1 text-[clamp(5px,.65vw,8px)] uppercase tracking-[.2em] text-slate-500">
+            {template?.name || "Certificate Template"}
           </div>
         </div>
         <h1 className="mt-[1.5%] whitespace-nowrap text-[clamp(12px,1.8vw,21px)] font-bold">
@@ -108,15 +128,17 @@ export function CertificatePreview({
             </span>
           </a>
           <div className="text-right">
-            <div className="mb-1 text-[clamp(15px,2vw,22px)] italic text-[#3158bd]">
-              MMA
-            </div>
-            <strong className="block">Moet Moet Ei Aung</strong>
-            <span>
-              Head of Software and Data Analytics Function
-              <br />
-              KBZ Bank
-            </span>
+            {certificate.signatureImage && (
+              <img
+                src={certificate.signatureImage}
+                alt={`Signature of ${certificate.signerName || "certificate approver"}`}
+                className="mb-1 ml-auto h-10 max-w-32 object-contain object-right"
+              />
+            )}
+            <strong className="block">
+              {certificate.signerName || "Awaiting approval"}
+            </strong>
+            {certificate.signerTitle && <span>{certificate.signerTitle}</span>}
           </div>
         </div>
       </div>
@@ -128,6 +150,43 @@ export function CertificatePreview({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function DynamicCertificatePreview({ certificate, layout, verificationUrl }: { certificate: Certificate; layout: TemplateLayout; verificationUrl: string }) {
+  const data: Record<string, unknown> = {
+    ...certificate.dynamicData,
+    name: certificate.dynamicData?.name || certificate.recipientName,
+    recipient_name: certificate.recipientName,
+    course: certificate.dynamicData?.course || certificate.courseName,
+    course_name: certificate.courseName,
+    certificate_id: certificate.dynamicData?.certificate_id || certificate.certificateNumber,
+    issue_date: certificate.dynamicData?.issue_date || certificate.issueDate,
+    department: certificate.dynamicData?.department || "",
+  };
+  const signatures = storage.getUsers();
+  const aspectRatio = `${layout.canvas.width} / ${layout.canvas.height}`;
+  const styleFor = (element: TemplateElement): CSSProperties => ({
+    position: "absolute",
+    left: `${(element.x / layout.canvas.width) * 100}%`,
+    top: `${(element.y / layout.canvas.height) * 100}%`,
+    width: `${(element.width / layout.canvas.width) * 100}%`,
+    height: `${(element.height / layout.canvas.height) * 100}%`,
+    transform: `rotate(${element.rotation}deg)`,
+    transformOrigin: "center",
+  });
+  return (
+    <div id="printable-certificate" className="relative mx-auto w-full max-w-[1123px] overflow-hidden bg-white shadow-lg" style={{ aspectRatio }}>
+      {layout.background && <img src={layout.background} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />}
+      {layout.elements.map((element) => {
+        const style = styleFor(element);
+        if (element.type === "text") return <div key={element.id} style={{ ...style, color: element.style?.color, fontFamily: element.style?.fontFamily, fontSize: `${(element.style?.fontSize || 16) * (layout.canvas.width / 1123)}px`, fontWeight: element.style?.fontWeight, lineHeight: element.style?.lineHeight || 1.2, textAlign: element.style?.align, display: "flex", alignItems: "center", justifyContent: element.style?.align === "center" ? "center" : element.style?.align === "right" ? "flex-end" : "flex-start", whiteSpace: "pre-wrap", overflow: "hidden", padding: 8 }}>{resolveTemplateValue(element, data)}</div>;
+        if (element.type === "shape") return <div key={element.id} style={{ ...style, background: element.fill, border: `1px solid ${element.stroke || "transparent"}` }} />;
+        if (element.type === "qr") return <div key={element.id} style={{ ...style, display: "flex", alignItems: "center", justifyContent: "center", background: "white" }}><QRCodeSVG value={verificationUrl} width="100%" height="100%" level="M" /></div>;
+        const source = element.type === "signature" ? signatures.find((user) => user.id === element.signatureId)?.signatureImage : element.src;
+        return source ? <img key={element.id} src={source} alt={element.type === "signature" ? "Certificate signature" : "Certificate artwork"} style={{ ...style, objectFit: "contain" }} /> : null;
+      })}
     </div>
   );
 }

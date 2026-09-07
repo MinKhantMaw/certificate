@@ -12,10 +12,14 @@ export const storage = {
   getUser: (): User | null => read<User | null>(KEYS.auth, null),
   getUsers: (): User[] => read<User[]>(KEYS.users, []),
   getUsersByRole: (role: UserRole) => storage.getUsers().filter(user => user.role === role),
-  updateUser: (user: User) => write(KEYS.users, storage.getUsers().map(item => item.id === user.id ? user : item)),
+  updateUser: (user: User) => {
+    write(KEYS.users, storage.getUsers().map(item => item.id === user.id ? user : item));
+    if (storage.getUser()?.id === user.id) write(KEYS.auth, user);
+  },
   getTemplates: (): CertificateTemplate[] => read<CertificateTemplate[]>(KEYS.templates, []),
   saveTemplate: (template: CertificateTemplate) => write(KEYS.templates, [...storage.getTemplates(), template]),
   updateTemplate: (template: CertificateTemplate) => write(KEYS.templates, storage.getTemplates().map(item => item.id === template.id ? template : item)),
+  deleteTemplate: (id: string) => write(KEYS.templates, storage.getTemplates().filter(item => item.id !== id)),
   getTrainings: (): TrainingProgram[] => read<TrainingProgram[]>(KEYS.trainings, []),
   getTraining: (id: string) => storage.getTrainings().find(item => item.id === id),
   saveTraining: (training: TrainingProgram) => write(KEYS.trainings, [...storage.getTrainings(), training]),
@@ -59,6 +63,9 @@ export const storage = {
     const program = storage.getTraining(batch.trainingProgramId);
     if (!program || !program.approverIds.includes(approverId)) throw new Error('Approver is not assigned to this training program.');
     if (program.status !== 'COMPLETED') throw new Error('Certificates can only be issued once the training program is marked COMPLETED.');
+    const templateId = batch.templateId || program.certificateTemplateId;
+    const template = storage.getTemplates().find(item => item.id === templateId && item.status === 'ACTIVE');
+    if (!template) throw new Error('The selected certificate template is no longer available.');
     const rows = storage.getPendingImportTrainees(batchId);
     if (rows.some(row => row.validationStatus !== 'VALID')) throw new Error('Invalid rows must be corrected before approval.');
 
@@ -71,12 +78,13 @@ export const storage = {
       department: row.department,
       trainingCode: row.trainingCode,
       createdAt: now(),
+      dynamicData: row.dynamicData,
     }));
     storage.saveTrainees(newTrainees);
     storage.updateImportBatch({ ...batch, status: 'APPROVED', reviewedBy: approverId, reviewedAt: now(), updatedAt: now() });
 
     // this is the link that was missing — without it, data never reaches Certificate Approvals
-    storage.issueCertificates(batch.trainingProgramId, newTrainees.map(trainee => trainee.id));
+    storage.issueCertificates(batch.trainingProgramId, newTrainees.map(trainee => trainee.id), template.id);
     storage.addAuditLog('Import approved and certificates issued', 'ImportBatch', batch.id);
   },
 
@@ -86,21 +94,43 @@ export const storage = {
     if (!batch || batch.status !== 'PENDING_APPROVAL' || !program?.approverIds.includes(approverId)) throw new Error('Import cannot be rejected by this approver.');
     storage.updateImportBatch({ ...batch, status: 'REJECTED', reviewedBy: approverId, reviewedAt: now(), rejectionReason, updatedAt: now() });
   },
-  getCertificates: (): Certificate[] => read<Certificate[]>(KEYS.certificates, []).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+  getCertificates: (): Certificate[] => {
+    const certificates = read<Certificate[]>(KEYS.certificates, []);
+    let changed = false;
+    const migrated = certificates.map(certificate => {
+      const program = certificate.trainingProgramId ? storage.getTraining(certificate.trainingProgramId) : undefined;
+      const approvedApproval = storage.getApprovals().find(item => item.certificateId === certificate.id && item.status === 'APPROVED');
+      const signer = approvedApproval ? storage.getUsers().find(item => item.id === approvedApproval.approverId) : undefined;
+      const updated = {
+        ...certificate,
+        ...(certificate.certificateTemplateId || !program ? {} : { certificateTemplateId: program.certificateTemplateId }),
+        ...(certificate.signatureUserId || !signer ? {} : { signatureUserId: signer.id, signatureImage: signer.signatureImage, signerName: signer.name, signerTitle: 'Approver' }),
+      };
+      if (updated.certificateTemplateId !== certificate.certificateTemplateId || updated.signatureUserId !== certificate.signatureUserId) changed = true;
+      return updated;
+    });
+    if (changed) write(KEYS.certificates, migrated);
+    return migrated.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
   getCertificateById: (id: string) => storage.getCertificates().find(item => item.id === id || item.certificateNumber === id),
   getCertificateByToken: (token: string) => storage.getCertificates().find(item => item.verificationToken === decodeURIComponent(token).trim()),
   saveCertificates: (certificates: Certificate[]) => write(KEYS.certificates, [...storage.getCertificates(), ...certificates]),
+  updateCertificate: (certificate: Certificate) => write(KEYS.certificates, storage.getCertificates().map(item => item.id === certificate.id ? certificate : item)),
   updateCertificateStatus: (id: string, status: Certificate['status']) => write(KEYS.certificates, storage.getCertificates().map(item => item.id === id ? { ...item, status } : item)),
   getNextCertificateIndex: () => storage.getCertificates().length + 1,
-  issueCertificates: (trainingProgramId: string, traineeIds: string[]) => {
+  issueCertificates: (trainingProgramId: string, traineeIds: string[], templateId?: string) => {
     const program = storage.getTraining(trainingProgramId);
     if (!program || program.status !== 'COMPLETED') throw new Error('Certificates can only be issued for completed training programs.');
+    const selectedTemplateId = templateId || program.certificateTemplateId;
+    const template = storage.getTemplates().find(item => item.id === selectedTemplateId && item.status === 'ACTIVE');
+    if (!template) throw new Error('Select an active certificate template before issuing certificates.');
     const trainees = storage.getTrainees().filter(trainee => trainee.trainingProgramId === trainingProgramId && traineeIds.includes(trainee.id));
     const timestamp = now();
     const certificates: Certificate[] = trainees.filter(trainee => !storage.getCertificates().some(cert => cert.traineeId === trainee.id)).map((trainee, index) => {
       const number = `CERT-${new Date().getFullYear()}-${String(storage.getNextCertificateIndex() + index).padStart(6, '0')}`;
       const token = crypto.randomUUID();
-      return { id: number, certificateNumber: number, verificationToken: token, verificationUrl: getVerificationUrl(token), recipientName: trainee.recipientName, certificateTitle: 'Certificate of Completion', courseName: program.name, issueDate: program.endDate || timestamp.slice(0, 10), organization: program.organization, certificateType: 'completion', email: trainee.email, status: 'PENDING_APPROVAL', trainingProgramId, traineeId: trainee.id, trainerIds: program.trainerIds, approverIds: program.approverIds, createdAt: timestamp };
+      const dynamicData = trainee.dynamicData || {};
+      return { id: number, certificateNumber: number, verificationToken: token, verificationUrl: getVerificationUrl(token), recipientName: String(dynamicData.name || dynamicData.recipient_name || trainee.recipientName), certificateTitle: String(dynamicData.certificate_title || 'Certificate of Completion'), courseName: String(dynamicData.course || dynamicData.course_name || program.name), issueDate: String(dynamicData.issue_date || dynamicData.completion_date || program.endDate || timestamp.slice(0, 10)), organization: String(dynamicData.organization || program.organization), certificateType: String(dynamicData.certificate_type || 'completion'), email: trainee.email, status: 'PENDING_APPROVAL', certificateTemplateId: template.id, dynamicData: { ...dynamicData, certificate_id: dynamicData.certificate_id || number }, trainingProgramId, traineeId: trainee.id, trainerIds: program.trainerIds, approverIds: program.approverIds, createdAt: timestamp };
     });
     storage.saveCertificates(certificates);
     storage.saveApprovals(certificates.flatMap(cert => program.approverIds.map((approverId, index): CertificateApproval => ({ id: `${cert.id}-approval-${index}`, certificateId: cert.id, approverId, status: 'PENDING', createdAt: timestamp, updatedAt: timestamp }))));
@@ -131,7 +161,7 @@ export const storage = {
       { id: 'trainee-2', trainingProgramId: training.id, recipientName: 'Bob Smith', email: 'bob@example.com', employeeId: 'EMP-1043', trainingCode: 'REACT-26', department: 'Product', createdAt: now() },
     ] as Trainee[]);
     const token = '00000000-0000-4000-8000-000000000001';
-    const certificate: Certificate = { id: 'CERT-2026-000001', certificateNumber: 'CERT-2026-000001', verificationToken: token, verificationUrl: getVerificationUrl(token), recipientName: 'Alice Johnson', certificateTitle: 'Certificate of Completion', courseName: training.name, issueDate: '2026-08-15', organization: training.organization, certificateType: 'completion', email: 'alice@example.com', status: 'VALID', trainingProgramId: training.id, traineeId: 'trainee-1', trainerIds: training.trainerIds, approverIds: training.approverIds, createdAt: now() };
+    const certificate: Certificate = { id: 'CERT-2026-000001', certificateNumber: 'CERT-2026-000001', verificationToken: token, verificationUrl: getVerificationUrl(token), recipientName: 'Alice Johnson', certificateTitle: 'Certificate of Completion', courseName: training.name, issueDate: '2026-08-15', organization: training.organization, certificateType: 'completion', email: 'alice@example.com', status: 'VALID', certificateTemplateId: template.id, trainingProgramId: training.id, traineeId: 'trainee-1', trainerIds: training.trainerIds, approverIds: training.approverIds, createdAt: now() };
     const pendingToken = '00000000-0000-4000-8000-000000000002';
     const pending: Certificate = { ...certificate, id: 'CERT-2026-000002', certificateNumber: 'CERT-2026-000002', verificationToken: pendingToken, verificationUrl: getVerificationUrl(pendingToken), recipientName: 'Bob Smith', email: 'bob@example.com', traineeId: 'trainee-2', status: 'PENDING_APPROVAL' };
     write(KEYS.certificates, [certificate, pending]);

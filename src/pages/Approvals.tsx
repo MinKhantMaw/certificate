@@ -30,10 +30,21 @@ export function Approvals() {
     });
 
     // Single-approval model: whichever approver decides first finalizes the certificate.
-    storage.updateCertificateStatus(
-      approval.certificateId,
-      status === "APPROVED" ? "VALID" : "REJECTED",
-    );
+    const certificate = storage.getCertificateById(approval.certificateId);
+    if (certificate) {
+      storage.updateCertificate({
+        ...certificate,
+        status: status === "APPROVED" ? "VALID" : "REJECTED",
+        ...(status === "APPROVED" && user
+          ? {
+              signatureUserId: user.id,
+              signatureImage: user.signatureImage,
+              signerName: user.name,
+              signerTitle: "Approver",
+            }
+          : {}),
+      });
+    }
 
     // Close out any other still-pending approval records for this certificate
     // so it doesn't linger as "pending" in other approvers' queues.
