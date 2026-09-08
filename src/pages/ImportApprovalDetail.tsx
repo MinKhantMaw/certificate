@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { storage } from "../services/storage";
@@ -10,6 +10,13 @@ export function ImportApprovalDetail() {
   const batch = id ? storage.getImportBatch(id) : undefined;
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
+  const [templates, setTemplates] = useState(() => storage.getTemplates());
+  useEffect(() => {
+    storage
+      .initTemplates()
+      .then(setTemplates)
+      .catch(() => undefined);
+  }, []);
   if (!batch)
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-red-800">
@@ -17,9 +24,7 @@ export function ImportApprovalDetail() {
       </div>
     );
   const program = storage.getTraining(batch.trainingProgramId);
-  const template = storage
-    .getTemplates()
-    .find((item) => item.id === batch.templateId);
+  const template = templates.find((item) => item.id === batch.templateId);
   const rows = storage.getPendingImportTrainees(batch.id);
   const review = (action: "approve" | "reject") => {
     try {

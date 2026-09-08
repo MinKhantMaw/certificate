@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Check, Upload, Users } from "lucide-react";
 import { storage } from "../services/storage";
@@ -7,7 +7,16 @@ export function TrainingProgramDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const user = storage.getUser();
-  const [program, setProgram] = useState(() => (id ? storage.getTraining(id) : undefined));
+  const [program, setProgram] = useState(() =>
+    id ? storage.getTraining(id) : undefined,
+  );
+  const [templates, setTemplates] = useState(() => storage.getTemplates());
+  useEffect(() => {
+    storage
+      .initTemplates()
+      .then(setTemplates)
+      .catch(() => undefined);
+  }, []);
   if (!program)
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-red-800">
@@ -15,33 +24,21 @@ export function TrainingProgramDetail() {
       </div>
     );
   const trainees = storage.getTraineesForTraining(program.id);
-  const template = storage
-    .getTemplates()
-    .find((item) => item.id === program.certificateTemplateId);
+  const template = templates.find(
+    (item) => item.id === program.certificateTemplateId,
+  );
   const users = storage.getUsers();
   const certificates = storage.getCertificates();
-  const issue = () => {
-    try {
-      const created = storage.issueCertificates(
-        program.id,
-        trainees.map((trainee) => trainee.id),
-      );
-      if (created.length) navigate("/certificates");
-      else window.alert("All approved trainees already have certificates.");
-    } catch (error) {
-      window.alert(
-        error instanceof Error
-          ? error.message
-          : "Unable to issue certificates.",
-      );
-    }
-  };
   const approve = () => {
     if (!user || user.role !== "TRAINER") return;
     try {
       setProgram(storage.approveTraining(program.id, user.id));
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Unable to approve achievement.");
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Unable to approve achievement.",
+      );
     }
   };
   return (
@@ -81,7 +78,7 @@ export function TrainingProgramDetail() {
             <Upload size={17} /> Import trainees
           </Link>
           <button
-            onClick={issue}
+            onClick={() => navigate(`/training-programs/${program.id}/import`)}
             disabled={!trainees.length || program.status !== "COMPLETED"}
             className="rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
           >

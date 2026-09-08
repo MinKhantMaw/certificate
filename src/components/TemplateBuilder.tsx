@@ -27,6 +27,7 @@ import {
   TemplateOrientation,
   User,
 } from "../types";
+import { createDefaultLayout } from "../utils/templateLayout";
 
 const PAGE_SIZES: Record<TemplatePageSize, { width: number; height: number }> =
   {
@@ -54,19 +55,6 @@ function useImage(src?: string) {
     next.src = src;
   }, [src]);
   return image;
-}
-
-export function createDefaultLayout(): TemplateLayout {
-  return {
-    version: 1,
-    canvas: {
-      width: 1123,
-      height: 794,
-      pageSize: "A4",
-      orientation: "landscape",
-    },
-    elements: [],
-  };
 }
 
 export function TemplateBuilder({
@@ -164,19 +152,21 @@ export function TemplateBuilder({
     setSelectedId(copy.id);
   };
 
-  const uploadFile = (
+  const uploadFile = async (
     event: ChangeEvent<HTMLInputElement>,
     kind: "background" | "image",
   ) => {
     const file = event.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (kind === "background")
-        update({ ...layout, background: String(reader.result) });
-      else if (selected) patchSelected({ src: String(reader.result) });
-    };
-    reader.readAsDataURL(file);
+    const response = await fetch("/api/templates/upload", {
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    if (!response.ok) return;
+    const result = (await response.json()) as { url: string };
+    if (kind === "background") update({ ...layout, background: result.url });
+    else if (selected) patchSelected({ src: result.url });
   };
 
   const setCanvas = (

@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { storage } from "../services/storage";
 import { Certificate, TemplateElement, TemplateLayout } from "../types";
@@ -14,11 +14,53 @@ export function CertificatePreview({
   const verificationUrl =
     certificate.verificationUrl ||
     getVerificationUrl(certificate.verificationToken);
-  const template = certificate.certificateTemplateId
-    ? storage
-        .getTemplates()
-        .find((item) => item.id === certificate.certificateTemplateId)
-    : undefined;
+  const hasTemplate = Boolean(certificate.certificateTemplateId);
+  const [loadingTemplate, setLoadingTemplate] = useState(
+    hasTemplate && !storage.getTemplates().length,
+  );
+  const [templateError, setTemplateError] = useState("");
+  const [template, setTemplate] = useState(() =>
+    certificate.certificateTemplateId
+      ? storage
+          .getTemplates()
+          .find((item) => item.id === certificate.certificateTemplateId)
+      : undefined,
+  );
+  useEffect(() => {
+    let active = true;
+    setLoadingTemplate(hasTemplate);
+    setTemplateError("");
+    storage
+      .initTemplates()
+      .then((templates) => {
+        if (!active) return;
+        const nextTemplate = certificate.certificateTemplateId
+          ? templates.find(
+              (item) => item.id === certificate.certificateTemplateId,
+            )
+          : undefined;
+        setTemplate(nextTemplate);
+        setLoadingTemplate(false);
+        setTemplateError(
+          certificate.certificateTemplateId && !nextTemplate
+            ? "Certificate template could not be loaded."
+            : "",
+        );
+      })
+      .catch(() => {
+        if (!active) return;
+        setLoadingTemplate(false);
+        if (certificate.certificateTemplateId)
+          setTemplateError("Certificate template could not be loaded.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [certificate.certificateTemplateId]);
+
+  if (loadingTemplate)
+    return <PreviewError message="Loading certificate template..." />;
+  if (templateError) return <PreviewError message={templateError} />;
 
   if (template?.layout) {
     return (
@@ -171,6 +213,7 @@ function DynamicCertificatePreview({
   layout: TemplateLayout;
   verificationUrl: string;
 }) {
+  const [backgroundError, setBackgroundError] = useState(false);
   const data: Record<string, unknown> = {
     ...certificate.dynamicData,
     name: certificate.dynamicData?.name || certificate.recipientName,
@@ -184,6 +227,14 @@ function DynamicCertificatePreview({
   };
   const signatures = storage.getUsers();
   const aspectRatio = `${layout.canvas.width} / ${layout.canvas.height}`;
+  if (
+    layout.version !== 1 ||
+    layout.canvas.width <= 0 ||
+    layout.canvas.height <= 0 ||
+    !Array.isArray(layout.elements)
+  ) {
+    return <PreviewError message="Invalid certificate template layout." />;
+  }
   const styleFor = (element: TemplateElement): CSSProperties => ({
     position: "absolute",
     left: `${(element.x / layout.canvas.width) * 100}%`,
@@ -196,7 +247,7 @@ function DynamicCertificatePreview({
   return (
     <div
       id="printable-certificate"
-      className="relative mx-auto w-full max-w-[1123px] overflow-hidden bg-white shadow-lg"
+      className="relative mx-auto min-w-[800px] w-full max-w-[1123px] overflow-hidden bg-white shadow-lg"
       style={{ aspectRatio }}
     >
       {layout.background && (
@@ -205,7 +256,11 @@ function DynamicCertificatePreview({
           alt=""
           aria-hidden="true"
           className="absolute inset-0 h-full w-full object-cover"
+          onError={() => setBackgroundError(true)}
         />
+      )}
+      {backgroundError && (
+        <PreviewError message="Certificate background could not be loaded." />
       )}
       {layout.elements.map((element) => {
         const style = styleFor(element);
@@ -286,6 +341,21 @@ function DynamicCertificatePreview({
           />
         ) : null;
       })}
+      {certificate.status === "REVOKED" && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center overflow-hidden">
+          <div className="-rotate-45 border-8 border-red-500 px-8 py-2 text-8xl font-bold uppercase text-red-500 opacity-30">
+            REVOKED
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PreviewError({ message }: { message: string }) {
+  return (
+    <div className="mx-auto flex min-h-[560px] w-full max-w-[1123px] items-center justify-center bg-white p-8 text-center text-sm text-red-700 shadow-lg">
+      {message}
     </div>
   );
 }

@@ -1,0 +1,59 @@
+{
+  "id": "977d9f98-e0d5-418d-9240-4e0c7a7f0760",
+  "name": "Agentic AI Training Course",
+  "description": "Agentic AI Training Course",
+  "previewImage": "/api/templates/assets/1a5d98ec-4454-4dc1-bff8-c25041a42452",
+  "layout": {
+    "version": 1,
+    "canvas": {
+      "width": 1123,
+      "height": 794,
+      "pageSize": "A4",
+      "orientation": "landscape"
+    },
+    "elements": [
+      {
+        "id": "text-dabfc58d-c26b-4481-b1c8-caf808f06d6e",
+        "type": "text",
+        "x": 378.15584465779256,
+        "y": 310.37794104784393,
+        "width": 300,
+        "height": 70,
+        "rotation": 0,
+        "key": "name",
+        "style": {
+          "fontFamily": "Arial",
+          "fontSize": 30,
+          "fontWeight": "bold",
+          "color": "#111827",
+          "align": "center",
+          "lineHeight": 1.2
+        }
+      },
+      {
+        "id": "text-2f0b9e60-b3d3-4f0b-b5ce-d273d40e5153",
+        "type": "text",
+        "x": 511.53246602662216,
+        "y": 363.6692906498732,
+        "width": 300,
+        "height": 70,
+        "rotation": 0,
+        "key": "employee_id",
+        "style": {
+          "fontFamily": "Arial",
+          "fontSize": 22,
+          "fontWeight": "bold",
+          "color": "#111827",
+          "align": "center",
+          "lineHeight": 1.2
+        }
+      }
+    ],
+    "background": "/api/templates/assets/1a5d98ec-4454-4dc1-bff8-c25041a42452"
+  },
+  "design": "konva",
+  "status": "ACTIVE",
+  "createdBy": "u-admin",
+  "createdAt": "2026-09-08T07:21:53.607Z",
+  "updatedAt": "2026-09-08T07:21:53.607Z"
+}

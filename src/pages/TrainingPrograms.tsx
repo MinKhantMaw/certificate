@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { CalendarDays, Check, Plus, Users } from "lucide-react";
 import { storage } from "../services/storage";
@@ -17,9 +17,13 @@ export function TrainingPrograms() {
   });
   const trainers = storage.getUsersByRole("TRAINER");
   const approvers = storage.getUsersByRole("APPROVER");
-  const templates = storage
-    .getTemplates()
-    .filter((item) => item.status === "ACTIVE");
+  const [templates, setTemplates] = useState(() => storage.getTemplates());
+  useEffect(() => {
+    storage
+      .initTemplates()
+      .then(setTemplates)
+      .catch(() => undefined);
+  }, []);
   const update = (key: string, value: string) =>
     setForm({ ...form, [key]: value });
   const create = (event: FormEvent) => {

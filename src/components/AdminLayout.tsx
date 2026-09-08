@@ -41,7 +41,7 @@ export function AdminLayout() {
     { to: "/certificates", icon: FileBadge, label: "Certificates" },
     { to: "/import", icon: Upload, label: "Import Excel" },
     { to: "/imports", icon: History, label: "Import History" },
-    { to: "/users", icon: Users, label: "Users" },
+    // { to: "/users", icon: Users, label: "Users" },
     ...(user?.role === "APPROVER"
       ? [
           {
@@ -56,8 +56,8 @@ export function AdminLayout() {
           },
         ]
       : []),
-    { to: "/profile", icon: UserRound, label: "My Signature" },
-    { to: "/settings", icon: Settings, label: "Settings" },
+    // { to: "/profile", icon: UserRound, label: "My Signature" },
+    // { to: "/settings", icon: Settings, label: "Settings" },
   ];
 
   // Initialize demo data

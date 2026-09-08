@@ -2,6 +2,9 @@ import { AuditLog, Certificate, CertificateApproval, CertificateTemplate, Import
 import { getVerificationUrl } from '../utils';
 
 const KEYS = { users: 'cms_users', templates: 'cms_templates', trainings: 'cms_trainings', trainees: 'cms_trainees', certificates: 'cms_certificates', approvals: 'cms_approvals', imports: 'cms_imports', importBatches: 'cms_import_batches', pendingImportTrainees: 'cms_pending_import_trainees', audit: 'cms_audit', auth: 'cms_auth' } as const;
+let templateCache: CertificateTemplate[] = [];
+let templateInitPromise: Promise<CertificateTemplate[]> | null = null;
+let templatesInitialized = false;
 const read = <T>(key: string, fallback: T): T => { try { return JSON.parse(localStorage.getItem(key) || '') as T; } catch { return fallback; } };
 const write = <T>(key: string, value: T) => localStorage.setItem(key, JSON.stringify(value));
 const now = () => new Date().toISOString();
@@ -16,10 +19,48 @@ export const storage = {
     write(KEYS.users, storage.getUsers().map(item => item.id === user.id ? user : item));
     if (storage.getUser()?.id === user.id) write(KEYS.auth, user);
   },
-  getTemplates: (): CertificateTemplate[] => read<CertificateTemplate[]>(KEYS.templates, []),
-  saveTemplate: (template: CertificateTemplate) => write(KEYS.templates, [...storage.getTemplates(), template]),
-  updateTemplate: (template: CertificateTemplate) => write(KEYS.templates, storage.getTemplates().map(item => item.id === template.id ? template : item)),
-  deleteTemplate: (id: string) => write(KEYS.templates, storage.getTemplates().filter(item => item.id !== id)),
+  getTemplates: (): CertificateTemplate[] => templateCache,
+  initTemplates: async () => {
+    if (templatesInitialized) return templateCache;
+    if (templateInitPromise) return templateInitPromise;
+    templateInitPromise = (async () => {
+      try {
+        const response = await fetch('/api/templates');
+        if (!response.ok) throw new Error('Unable to load certificate templates.');
+        templateCache = await response.json() as CertificateTemplate[];
+      } catch (error) {
+        const legacy = read<CertificateTemplate[]>(KEYS.templates, []);
+        if (!legacy.length) throw error;
+        templateCache = legacy;
+      }
+      templatesInitialized = true;
+      return templateCache;
+    })();
+    try {
+      return await templateInitPromise;
+    } finally {
+      templateInitPromise = null;
+    }
+  },
+  saveTemplate: async (template: CertificateTemplate) => {
+    const response = await fetch('/api/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(template) });
+    if (!response.ok) throw new Error('Unable to save certificate template.');
+    templateCache = [...templateCache, await response.json() as CertificateTemplate];
+    templatesInitialized = true;
+  },
+  updateTemplate: async (template: CertificateTemplate) => {
+    const response = await fetch('/api/templates', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(template) });
+    if (!response.ok) throw new Error('Unable to update certificate template.');
+    const updated = await response.json() as CertificateTemplate;
+    templateCache = templateCache.map(item => item.id === template.id ? updated : item);
+    templatesInitialized = true;
+  },
+  deleteTemplate: async (id: string) => {
+    const response = await fetch(`/api/templates?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Unable to delete certificate template.');
+    templateCache = templateCache.filter(item => item.id !== id);
+    templatesInitialized = true;
+  },
   getTrainings: (): TrainingProgram[] => read<TrainingProgram[]>(KEYS.trainings, []),
   getTraining: (id: string) => storage.getTrainings().find(item => item.id === id),
   saveTraining: (training: TrainingProgram) => write(KEYS.trainings, [...storage.getTrainings(), training]),
@@ -63,7 +104,8 @@ export const storage = {
     const program = storage.getTraining(batch.trainingProgramId);
     if (!program || !program.approverIds.includes(approverId)) throw new Error('Approver is not assigned to this training program.');
     if (program.status !== 'COMPLETED') throw new Error('Certificates can only be issued once the training program is marked COMPLETED.');
-    const templateId = batch.templateId || program.certificateTemplateId;
+    const templateId = batch.templateId;
+    if (!templateId) throw new Error('A certificate template must be selected before generation.');
     const template = storage.getTemplates().find(item => item.id === templateId && item.status === 'ACTIVE');
     if (!template) throw new Error('The selected certificate template is no longer available.');
     const rows = storage.getPendingImportTrainees(batchId);
@@ -118,11 +160,10 @@ export const storage = {
   updateCertificate: (certificate: Certificate) => write(KEYS.certificates, storage.getCertificates().map(item => item.id === certificate.id ? certificate : item)),
   updateCertificateStatus: (id: string, status: Certificate['status']) => write(KEYS.certificates, storage.getCertificates().map(item => item.id === id ? { ...item, status } : item)),
   getNextCertificateIndex: () => storage.getCertificates().length + 1,
-  issueCertificates: (trainingProgramId: string, traineeIds: string[], templateId?: string) => {
+  issueCertificates: (trainingProgramId: string, traineeIds: string[], templateId: string) => {
     const program = storage.getTraining(trainingProgramId);
     if (!program || program.status !== 'COMPLETED') throw new Error('Certificates can only be issued for completed training programs.');
-    const selectedTemplateId = templateId || program.certificateTemplateId;
-    const template = storage.getTemplates().find(item => item.id === selectedTemplateId && item.status === 'ACTIVE');
+    const template = storage.getTemplates().find(item => item.id === templateId && item.status === 'ACTIVE');
     if (!template) throw new Error('Select an active certificate template before issuing certificates.');
     const trainees = storage.getTrainees().filter(trainee => trainee.trainingProgramId === trainingProgramId && traineeIds.includes(trainee.id));
     const timestamp = now();
@@ -155,7 +196,7 @@ export const storage = {
     ];
     const template: CertificateTemplate = { id: 'tpl-modern', name: 'Modern Professional', description: 'A clean, editorial certificate for professional learning.', design: 'classic', status: 'ACTIVE', createdBy: 'u-admin', createdAt: now(), updatedAt: now() };
     const training: TrainingProgram = { id: 'training-react', name: 'Advanced React Patterns', description: 'Production patterns for modern React applications.', trainingCode: 'REACT-26', organization: 'KBZ BANK', startDate: '2026-08-12', endDate: '2026-08-15', duration: '32 hours', location: 'Remote', trainingType: 'Professional development', trainerIds: ['u-trainer'], approverIds: ['u-approver', 'u-approver-2'], certificateTemplateId: template.id, status: 'COMPLETED', createdAt: now() };
-    write(KEYS.users, users); write(KEYS.templates, [template]); write(KEYS.trainings, [training]);
+    write(KEYS.users, users); write(KEYS.trainings, [training]);
     write(KEYS.trainees, [
       { id: 'trainee-1', trainingProgramId: training.id, recipientName: 'Alice Johnson', email: 'alice@example.com', employeeId: 'EMP-1042', trainingCode: 'REACT-26', department: 'Engineering', createdAt: now() },
       { id: 'trainee-2', trainingProgramId: training.id, recipientName: 'Bob Smith', email: 'bob@example.com', employeeId: 'EMP-1043', trainingCode: 'REACT-26', department: 'Product', createdAt: now() },

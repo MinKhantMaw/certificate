@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, lazy, Suspense, useEffect, useState } from "react";
 import {
   Edit3,
   Palette,
@@ -11,13 +11,16 @@ import {
 import { storage } from "../services/storage";
 import { CertificateTemplate, TemplateLayout } from "../types";
 import { getTemplateKeys } from "../utils";
-import {
-  createDefaultLayout,
-  TemplateBuilder,
-} from "../components/TemplateBuilder";
+import { createDefaultLayout } from "../utils/templateLayout";
+
+const TemplateBuilder = lazy(() =>
+  import("../components/TemplateBuilder").then(({ TemplateBuilder }) => ({
+    default: TemplateBuilder,
+  })),
+);
 
 export function CertificateTemplates() {
-  const [templates, setTemplates] = useState(storage.getTemplates());
+  const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -25,6 +28,12 @@ export function CertificateTemplates() {
   const [previewImage, setPreviewImage] = useState<string | undefined>();
   const [layout, setLayout] = useState<TemplateLayout>(createDefaultLayout);
   const [error, setError] = useState("");
+  useEffect(() => {
+    storage
+      .initTemplates()
+      .then(setTemplates)
+      .catch((reason: Error) => setError(reason.message));
+  }, []);
   const resetForm = () => {
     setName("");
     setDescription("");
@@ -47,7 +56,7 @@ export function CertificateTemplates() {
     setError("");
     setShowForm(true);
   };
-  const save = (event: FormEvent) => {
+  const save = async (event: FormEvent) => {
     event.preventDefault();
     const keys = getTemplateKeys(layout);
     const invalidText = layout.elements.some(
@@ -73,7 +82,7 @@ export function CertificateTemplates() {
     if (editingId) {
       const existing = templates.find((item) => item.id === editingId);
       if (!existing) return;
-      storage.updateTemplate({
+      await storage.updateTemplate({
         ...existing,
         name: name.trim(),
         description: description.trim(),
@@ -82,7 +91,7 @@ export function CertificateTemplates() {
         updatedAt: timestamp,
       });
     } else {
-      storage.saveTemplate({
+      await storage.saveTemplate({
         id: crypto.randomUUID(),
         name: name.trim(),
         description: description.trim(),
@@ -95,18 +104,18 @@ export function CertificateTemplates() {
         updatedAt: timestamp,
       });
     }
-    setTemplates(storage.getTemplates());
+    setTemplates([...storage.getTemplates()]);
     resetForm();
   };
-  const toggle = (template: CertificateTemplate) => {
-    storage.updateTemplate({
+  const toggle = async (template: CertificateTemplate) => {
+    await storage.updateTemplate({
       ...template,
       status: template.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
       updatedAt: new Date().toISOString(),
     });
-    setTemplates(storage.getTemplates());
+    setTemplates([...storage.getTemplates()]);
   };
-  const remove = (template: CertificateTemplate) => {
+  const remove = async (template: CertificateTemplate) => {
     if (
       storage
         .getTrainings()
@@ -118,8 +127,8 @@ export function CertificateTemplates() {
       return;
     }
     if (!window.confirm(`Delete the template "${template.name}"?`)) return;
-    storage.deleteTemplate(template.id);
-    setTemplates(storage.getTemplates());
+    await storage.deleteTemplate(template.id);
+    setTemplates([...storage.getTemplates()]);
   };
   return (
     <div className="space-y-6">
@@ -168,22 +177,30 @@ export function CertificateTemplates() {
               />
             </label>
           </div>
-          <TemplateBuilder
-            key={editingId || "draft"}
-            template={{
-              id: editingId || "draft",
-              name,
-              description,
-              design: "konva",
-              status: "ACTIVE",
-              createdBy: storage.getUser()?.id || "u-admin",
-              createdAt: "",
-              updatedAt: "",
-              previewImage,
-              layout,
-            }}
-            onChange={setLayout}
-          />
+          <Suspense
+            fallback={
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+                Loading template editor...
+              </div>
+            }
+          >
+            <TemplateBuilder
+              key={editingId || "draft"}
+              template={{
+                id: editingId || "draft",
+                name,
+                description,
+                design: "konva",
+                status: "ACTIVE",
+                createdBy: storage.getUser()?.id || "u-admin",
+                createdAt: "",
+                updatedAt: "",
+                previewImage,
+                layout,
+              }}
+              onChange={setLayout}
+            />
+          </Suspense>
           {error && (
             <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {error}

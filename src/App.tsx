@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -12,22 +12,23 @@ import {
 } from "react-router-dom";
 import { AdminLayout } from "./components/AdminLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import { Login } from "./pages/Login";
-import { Dashboard } from "./pages/Dashboard";
-import { ImportExcel } from "./pages/ImportExcel";
-import { ImportProgramSelect } from "./pages/ImportProgramSelect";
-import { CertificateList } from "./pages/CertificateList";
-import { CertificateDetail } from "./pages/CertificateDetail";
-import { ImportHistory } from "./pages/ImportHistory";
-import { VerifyCertificate } from "./pages/VerifyCertificate";
-import { TrainingPrograms } from "./pages/TrainingPrograms";
-import { CertificateTemplates } from "./pages/CertificateTemplates";
-import { Approvals } from "./pages/Approvals";
-import { SignatureProfile } from "./pages/SignatureProfile";
-import { TrainingProgramDetail } from "./pages/TrainingProgramDetail";
-import { ImportApprovals } from "./pages/ImportApprovals";
-import { ImportApprovalDetail } from "./pages/ImportApprovalDetail";
 import { storage } from "./services/storage";
+
+const Login = lazy(() => import("./pages/Login").then(({ Login }) => ({ default: Login })));
+const Dashboard = lazy(() => import("./pages/Dashboard").then(({ Dashboard }) => ({ default: Dashboard })));
+const ImportExcel = lazy(() => import("./pages/ImportExcel").then(({ ImportExcel }) => ({ default: ImportExcel })));
+const ImportProgramSelect = lazy(() => import("./pages/ImportProgramSelect").then(({ ImportProgramSelect }) => ({ default: ImportProgramSelect })));
+const CertificateList = lazy(() => import("./pages/CertificateList").then(({ CertificateList }) => ({ default: CertificateList })));
+const CertificateDetail = lazy(() => import("./pages/CertificateDetail").then(({ CertificateDetail }) => ({ default: CertificateDetail })));
+const ImportHistory = lazy(() => import("./pages/ImportHistory").then(({ ImportHistory }) => ({ default: ImportHistory })));
+const VerifyCertificate = lazy(() => import("./pages/VerifyCertificate").then(({ VerifyCertificate }) => ({ default: VerifyCertificate })));
+const TrainingPrograms = lazy(() => import("./pages/TrainingPrograms").then(({ TrainingPrograms }) => ({ default: TrainingPrograms })));
+const CertificateTemplates = lazy(() => import("./pages/CertificateTemplates").then(({ CertificateTemplates }) => ({ default: CertificateTemplates })));
+const Approvals = lazy(() => import("./pages/Approvals").then(({ Approvals }) => ({ default: Approvals })));
+const SignatureProfile = lazy(() => import("./pages/SignatureProfile").then(({ SignatureProfile }) => ({ default: SignatureProfile })));
+const TrainingProgramDetail = lazy(() => import("./pages/TrainingProgramDetail").then(({ TrainingProgramDetail }) => ({ default: TrainingProgramDetail })));
+const ImportApprovals = lazy(() => import("./pages/ImportApprovals").then(({ ImportApprovals }) => ({ default: ImportApprovals })));
+const ImportApprovalDetail = lazy(() => import("./pages/ImportApprovalDetail").then(({ ImportApprovalDetail }) => ({ default: ImportApprovalDetail })));
 
 export default function App() {
   useEffect(() => {
@@ -36,7 +37,14 @@ export default function App() {
 
   return (
     <Router>
-      <Routes>
+      <Suspense
+        fallback={
+          <div className="flex min-h-screen items-center justify-center bg-gray-50 text-sm text-gray-500">
+            Loading...
+          </div>
+        }
+      >
+        <Routes>
         {/* Public Routes - Not protected by auth guard */}
         <Route path="/login" element={<Login />} />
         <Route
@@ -119,7 +127,8 @@ export default function App() {
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+        </Routes>
+      </Suspense>
     </Router>
   );
 }

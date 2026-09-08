@@ -39,7 +39,7 @@ export function resolveTemplateValue(
 ): string {
   const key = element.key?.replace(/^\{\{|\}\}$/g, '').trim();
   if (!key) return '';
-  const value = data[key];
+  const value = data[key] ?? data[Object.keys(data).find((candidate) => candidate.toLowerCase() === key.toLowerCase()) || ''];
   if (value === null || value === undefined) return '';
   return String(value);
 }

@@ -1,5 +1,4 @@
-import { ChangeEvent, useState } from "react";
-import * as XLSX from "xlsx";
+import { ChangeEvent, useEffect, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -8,9 +7,15 @@ import {
   Upload,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ImportBatch, ImportedRow, PendingImportTrainee } from "../types";
+import {
+  Certificate,
+  ImportBatch,
+  ImportedRow,
+  PendingImportTrainee,
+} from "../types";
 import { storage } from "../services/storage";
 import { getTemplateKeys } from "../utils";
+import { CertificatePreview } from "../components/CertificatePreview";
 
 type ImportStep = "UPLOAD" | "PREVIEW" | "SUBMITTED";
 
@@ -20,24 +25,30 @@ export function ImportExcel() {
   const program = trainingProgramId
     ? storage.getTraining(trainingProgramId)
     : undefined;
-  const templates = storage
-    .getTemplates()
-    .filter((item) => item.status === "ACTIVE");
-  const [selectedTemplateId, setSelectedTemplateId] = useState(
-    program?.certificateTemplateId || "",
-  );
+  const [templates, setTemplates] = useState(() => storage.getTemplates());
+  useEffect(() => {
+    storage
+      .initTemplates()
+      .then(setTemplates)
+      .catch(() => undefined);
+  }, []);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [step, setStep] = useState<ImportStep>("UPLOAD");
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<ImportedRow[]>([]);
   const [batch, setBatch] = useState<ImportBatch | null>(null);
   const [error, setError] = useState("");
+  const selectedTemplate = templates.find(
+    (template) => template.id === selectedTemplateId,
+  );
 
   const parseExcel = (selectedFile: File) => {
     setError("");
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
-        const workbook = XLSX.read(event.target?.result, { type: "binary" });
+        const XLSX = await import("xlsx");
+        const workbook = XLSX.read(event.target?.result, { type: "array" });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
           sheet,
@@ -130,10 +141,14 @@ export function ImportExcel() {
         );
       }
     };
-    reader.readAsBinaryString(selectedFile);
+    reader.readAsArrayBuffer(selectedFile);
   };
 
   const submitForApproval = () => {
+    if (!selectedTemplateId || !selectedTemplate) {
+      setError("Please select a certificate template.");
+      return;
+    }
     if (
       !program ||
       !file ||
@@ -230,16 +245,25 @@ export function ImportExcel() {
             </option>
           ))}
         </select>
-        {selectedTemplateId && (
-          <span className="mt-1 block text-xs font-normal text-slate-500">
-            Using{" "}
-            {
-              templates.find((template) => template.id === selectedTemplateId)
-                ?.name
-            }
-          </span>
+        {selectedTemplate && (
+          <div className="mt-3 flex items-center gap-3 text-sm font-normal text-slate-600">
+            {selectedTemplate.previewImage && (
+              <img
+                src={selectedTemplate.previewImage}
+                alt=""
+                aria-hidden="true"
+                className="h-12 w-20 rounded border border-slate-200 object-cover"
+              />
+            )}
+            <span>Selected Template: {selectedTemplate.name}</span>
+          </div>
         )}
       </label>
+      {!selectedTemplateId && (
+        <p className="text-sm text-amber-700">
+          Please select a certificate template.
+        </p>
+      )}
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {error}
@@ -303,6 +327,7 @@ export function ImportExcel() {
               </button>
               <button
                 disabled={
+                  !selectedTemplateId ||
                   !validCount ||
                   rows.some((row) =>
                     row.errors?.some((message) =>
@@ -317,6 +342,22 @@ export function ImportExcel() {
               </button>
             </div>
           </div>
+          {selectedTemplate && rows[0] && (
+            <div className="border-b border-slate-200 bg-slate-50 p-5">
+              <p className="mb-3 text-sm font-semibold text-slate-700">
+                Certificate preview using {selectedTemplate.name}
+              </p>
+              <div className="overflow-x-auto">
+                <CertificatePreview
+                  certificate={previewCertificate(
+                    rows[0],
+                    program,
+                    selectedTemplate.id,
+                  )}
+                />
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200">
               <thead className="bg-white">
@@ -395,6 +436,38 @@ export function ImportExcel() {
     </div>
   );
 }
+
+function previewCertificate(
+  row: ImportedRow,
+  program: NonNullable<ReturnType<typeof storage.getTraining>>,
+  templateId: string,
+): Certificate {
+  const dynamicData = row.dynamicData || {};
+  return {
+    id: "preview",
+    certificateNumber: "PREVIEW",
+    verificationToken: "preview",
+    verificationUrl: "",
+    recipientName: row.recipient_name,
+    certificateTitle: String(
+      dynamicData.certificate_title || "Certificate of Completion",
+    ),
+    courseName: String(
+      dynamicData.course || dynamicData.course_name || program.name,
+    ),
+    issueDate: String(
+      dynamicData.issue_date || dynamicData.completion_date || program.endDate,
+    ),
+    organization: String(dynamicData.organization || program.organization),
+    certificateType: String(dynamicData.certificate_type || "completion"),
+    email: row.email,
+    status: "DRAFT",
+    certificateTemplateId: templateId,
+    dynamicData,
+    createdAt: new Date().toISOString(),
+  };
+}
+
 function Step({
   active,
   complete,
