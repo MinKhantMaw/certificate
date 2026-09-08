@@ -204,17 +204,17 @@ export function TemplateBuilder({
           label="Text"
           onClick={() => addElement("text")}
         />
-        <ToolButton
+        {/* <ToolButton
           icon={<ImagePlus size={16} />}
           label="Image"
           onClick={() => addElement("image")}
-        />
-        <ToolButton
+        /> */}
+        {/* <ToolButton
           icon={<Signature size={16} />}
           label="Signature"
           onClick={() => addElement("signature")}
-        />
-        <ToolButton
+        /> */}
+        {/* <ToolButton
           icon={<QrCode size={16} />}
           label="QR code"
           onClick={() => addElement("qr")}
@@ -223,7 +223,7 @@ export function TemplateBuilder({
           icon={<Square size={16} />}
           label="Shape"
           onClick={() => addElement("shape")}
-        />
+        /> */}
         <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
           <ImagePlus size={16} /> Background
           <input
