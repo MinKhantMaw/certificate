@@ -18,6 +18,9 @@ import { getTemplateKeys } from "../utils";
 import { CertificatePreview } from "../components/CertificatePreview";
 
 type ImportStep = "UPLOAD" | "PREVIEW" | "SUBMITTED";
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_ROWS = 5000;
+const PREVIEW_PAGE_SIZE = 100;
 
 export function ImportExcel() {
   const { id: trainingProgramId } = useParams<{ id: string }>();
@@ -38,12 +41,17 @@ export function ImportExcel() {
   const [rows, setRows] = useState<ImportedRow[]>([]);
   const [batch, setBatch] = useState<ImportBatch | null>(null);
   const [error, setError] = useState("");
+  const [previewPage, setPreviewPage] = useState(0);
   const selectedTemplate = templates.find(
     (template) => template.id === selectedTemplateId,
   );
 
   const parseExcel = (selectedFile: File) => {
     setError("");
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      setError("Excel files must be 10 MB or smaller.");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
@@ -130,8 +138,11 @@ export function ImportExcel() {
         });
         if (!rawRows.length)
           throw new Error("The Excel file contains no rows.");
+        if (rawRows.length > MAX_ROWS)
+          throw new Error(`Excel files are limited to ${MAX_ROWS} rows.`);
         setRows(parsed);
         setFile(selectedFile);
+        setPreviewPage(0);
         setStep("PREVIEW");
       } catch (parseError) {
         setError(
@@ -320,7 +331,10 @@ export function ImportExcel() {
             </div>
             <div className="flex gap-3">
               <button
-                onClick={() => setStep("UPLOAD")}
+                onClick={() => {
+                  setStep("UPLOAD");
+                  setPreviewPage(0);
+                }}
                 className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700"
               >
                 Choose another
@@ -381,7 +395,12 @@ export function ImportExcel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {rows.map((row, index) => (
+                {rows
+                  .slice(
+                    previewPage * PREVIEW_PAGE_SIZE,
+                    (previewPage + 1) * PREVIEW_PAGE_SIZE,
+                  )
+                  .map((row, index) => (
                   <tr key={index} className={row.isValid ? "" : "bg-red-50/60"}>
                     <td className="px-4 py-3">
                       {row.isValid ? (
@@ -409,10 +428,36 @@ export function ImportExcel() {
                       {row.errors?.join(", ") || "-"}
                     </td>
                   </tr>
-                ))}
+                  ))}
               </tbody>
             </table>
           </div>
+          {rows.length > PREVIEW_PAGE_SIZE && (
+            <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3 text-sm text-slate-600">
+              <span>
+                Showing {previewPage * PREVIEW_PAGE_SIZE + 1}-
+                {Math.min((previewPage + 1) * PREVIEW_PAGE_SIZE, rows.length)} of {rows.length}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={previewPage === 0}
+                  onClick={() => setPreviewPage((page) => page - 1)}
+                  className="rounded border border-slate-300 px-3 py-1 disabled:opacity-40"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  disabled={(previewPage + 1) * PREVIEW_PAGE_SIZE >= rows.length}
+                  onClick={() => setPreviewPage((page) => page + 1)}
+                  className="rounded border border-slate-300 px-3 py-1 disabled:opacity-40"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
       {step === "SUBMITTED" && batch && (

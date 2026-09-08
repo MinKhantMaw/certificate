@@ -138,11 +138,21 @@ export const storage = {
   },
   getCertificates: (): Certificate[] => {
     const certificates = read<Certificate[]>(KEYS.certificates, []);
+    const trainings = storage.getTrainings();
+    const approvals = storage.getApprovals();
+    const users = storage.getUsers();
+    const trainingById = new Map(trainings.map((training) => [training.id, training]));
+    const approvedApprovalByCertificate = new Map(
+      approvals
+        .filter((approval) => approval.status === 'APPROVED')
+        .map((approval) => [approval.certificateId, approval]),
+    );
+    const userById = new Map(users.map((user) => [user.id, user]));
     let changed = false;
     const migrated = certificates.map(certificate => {
-      const program = certificate.trainingProgramId ? storage.getTraining(certificate.trainingProgramId) : undefined;
-      const approvedApproval = storage.getApprovals().find(item => item.certificateId === certificate.id && item.status === 'APPROVED');
-      const signer = approvedApproval ? storage.getUsers().find(item => item.id === approvedApproval.approverId) : undefined;
+      const program = certificate.trainingProgramId ? trainingById.get(certificate.trainingProgramId) : undefined;
+      const approvedApproval = approvedApprovalByCertificate.get(certificate.id);
+      const signer = approvedApproval ? userById.get(approvedApproval.approverId) : undefined;
       const updated = {
         ...certificate,
         ...(certificate.certificateTemplateId || !program ? {} : { certificateTemplateId: program.certificateTemplateId }),
@@ -165,10 +175,14 @@ export const storage = {
     if (!program || program.status !== 'COMPLETED') throw new Error('Certificates can only be issued for completed training programs.');
     const template = storage.getTemplates().find(item => item.id === templateId && item.status === 'ACTIVE');
     if (!template) throw new Error('Select an active certificate template before issuing certificates.');
-    const trainees = storage.getTrainees().filter(trainee => trainee.trainingProgramId === trainingProgramId && traineeIds.includes(trainee.id));
+    const existingCertificates = storage.getCertificates();
+    const existingTraineeIds = new Set(existingCertificates.map((certificate) => certificate.traineeId));
+    const requestedTraineeIds = new Set(traineeIds);
+    const trainees = storage.getTrainees().filter(trainee => trainee.trainingProgramId === trainingProgramId && requestedTraineeIds.has(trainee.id));
     const timestamp = now();
-    const certificates: Certificate[] = trainees.filter(trainee => !storage.getCertificates().some(cert => cert.traineeId === trainee.id)).map((trainee, index) => {
-      const number = `CERT-${new Date().getFullYear()}-${String(storage.getNextCertificateIndex() + index).padStart(6, '0')}`;
+    const nextCertificateIndex = existingCertificates.length + 1;
+    const certificates: Certificate[] = trainees.filter(trainee => !existingTraineeIds.has(trainee.id)).map((trainee, index) => {
+      const number = `CERT-${new Date().getFullYear()}-${String(nextCertificateIndex + index).padStart(6, '0')}`;
       const token = crypto.randomUUID();
       const dynamicData = trainee.dynamicData || {};
       return { id: number, certificateNumber: number, verificationToken: token, verificationUrl: getVerificationUrl(token), recipientName: String(dynamicData.name || dynamicData.recipient_name || trainee.recipientName), certificateTitle: String(dynamicData.certificate_title || 'Certificate of Completion'), courseName: String(dynamicData.course || dynamicData.course_name || program.name), issueDate: String(dynamicData.issue_date || dynamicData.completion_date || program.endDate || timestamp.slice(0, 10)), organization: String(dynamicData.organization || program.organization), certificateType: String(dynamicData.certificate_type || 'completion'), email: trainee.email, status: 'PENDING_APPROVAL', certificateTemplateId: template.id, dynamicData: { ...dynamicData, certificate_id: dynamicData.certificate_id || number }, trainingProgramId, traineeId: trainee.id, trainerIds: program.trainerIds, approverIds: program.approverIds, createdAt: timestamp };

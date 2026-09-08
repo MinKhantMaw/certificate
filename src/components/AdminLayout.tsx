@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -59,11 +58,6 @@ export function AdminLayout() {
     // { to: "/profile", icon: UserRound, label: "My Signature" },
     // { to: "/settings", icon: Settings, label: "Settings" },
   ];
-
-  // Initialize demo data
-  useEffect(() => {
-    storage.initDemoData();
-  }, []);
 
   const pageTitle =
     navItems.find((item) => location.pathname.startsWith(item.to))?.label ||

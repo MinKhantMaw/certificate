@@ -14,6 +14,7 @@ interface Response {
 }
 
 const root = path.join(process.cwd(), 'storage', 'templates', 'assets');
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const types: Record<string, string> = {
   'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/gif': '.gif',
 };
@@ -25,13 +26,25 @@ export default async function handler(req: Request, res: Response) {
   const contentType = String(req.headers?.['content-type'] || '').split(';')[0].toLowerCase();
   const extension = types[contentType];
   if (!extension) return res.status(415).json({ error: 'Only PNG, JPEG, WEBP, and GIF images are supported.' });
+  const contentLength = Number(req.headers?.['content-length'] || 0);
+  if (contentLength > MAX_UPLOAD_BYTES) return res.status(413).json({ error: 'Images must be 10 MB or smaller.' });
 
   const chunks: Buffer[] = [];
-  await new Promise<void>((resolve, reject) => {
-    req.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string)));
-    req.on('end', () => resolve());
+  let totalBytes = 0;
+  const accepted = await new Promise<boolean>((resolve, reject) => {
+    req.on('data', (chunk) => {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
+      totalBytes += buffer.byteLength;
+      if (totalBytes > MAX_UPLOAD_BYTES) {
+        resolve(false);
+        return;
+      }
+      chunks.push(buffer);
+    });
+    req.on('end', () => resolve(true));
     req.on('error', (error) => reject(error));
   });
+  if (!accepted) return res.status(413).json({ error: 'Images must be 10 MB or smaller.' });
   const assetId = crypto.randomUUID();
   await fs.mkdir(root, { recursive: true });
   await fs.writeFile(path.join(root, `${assetId}${extension}`), Buffer.concat(chunks));
