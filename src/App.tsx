@@ -3,16 +3,23 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
 } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AdminLayout } from "./components/AdminLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import { storage } from "./services/storage";
+import { AuthProvider } from "./hooks/useAuth";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false },
+  },
+});
 
 const Login = lazy(() =>
   import("./pages/Login").then(({ Login }) => ({ default: Login })),
@@ -63,11 +70,6 @@ const CertificateTemplates = lazy(() =>
 const Approvals = lazy(() =>
   import("./pages/Approvals").then(({ Approvals }) => ({ default: Approvals })),
 );
-const SignatureProfile = lazy(() =>
-  import("./pages/SignatureProfile").then(({ SignatureProfile }) => ({
-    default: SignatureProfile,
-  })),
-);
 const TrainingProgramDetail = lazy(() =>
   import("./pages/TrainingProgramDetail").then(({ TrainingProgramDetail }) => ({
     default: TrainingProgramDetail,
@@ -85,19 +87,17 @@ const ImportApprovalDetail = lazy(() =>
 );
 
 export default function App() {
-  useEffect(() => {
-    storage.initDemoData();
-  }, []);
-
   return (
-    <Router>
-      <Suspense
-        fallback={
-          <div className="flex min-h-screen items-center justify-center bg-gray-50 text-sm text-gray-500">
-            Loading...
-          </div>
-        }
-      >
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <Router>
+          <Suspense
+            fallback={
+              <div className="flex min-h-screen items-center justify-center bg-gray-50 text-sm text-gray-500">
+                Loading...
+              </div>
+            }
+          >
         <Routes>
           {/* Public Routes - Not protected by auth guard */}
           <Route path="/login" element={<Login />} />
@@ -154,7 +154,6 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="profile" element={<SignatureProfile />} />
             <Route path="import" element={<ImportProgramSelect />} />
             <Route path="imports" element={<ImportHistory />} />
             <Route path="certificates" element={<CertificateList />} />
@@ -182,7 +181,9 @@ export default function App() {
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
-      </Suspense>
-    </Router>
+          </Suspense>
+        </Router>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }

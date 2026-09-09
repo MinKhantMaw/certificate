@@ -1,30 +1,29 @@
 import { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { storage } from "../services/storage";
+import { useAuth } from "../hooks/useAuth";
 import { FileBadge, Lock, Mail } from "lucide-react";
 
 export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"ADMIN" | "TRAINER" | "APPROVER">("ADMIN");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const { signIn } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = (e: FormEvent) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
-    const demo =
-      role === "ADMIN"
-        ? email === "admin@example.com"
-        : role === "TRAINER"
-          ? email === "trainer@example.com"
-          : email === "approver@example.com";
-    if (demo && password === "admin123") {
-      storage.login(email, role);
+    setError("");
+    setSubmitting(true);
+    try {
+      await signIn(email.trim(), password);
       navigate("/dashboard");
-    } else {
+    } catch (caught) {
       setError(
-        "Invalid credentials. Use the demo email for the selected role and password admin123.",
+        caught instanceof Error ? caught.message : "Unable to sign in.",
       );
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -45,24 +44,6 @@ export function Login() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-gray-100">
           <form className="space-y-6" onSubmit={handleLogin}>
-            <div>
-              <label
-                htmlFor="role"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Role
-              </label>
-              <select
-                id="role"
-                value={role}
-                onChange={(e) => setRole(e.target.value as typeof role)}
-                className="mt-1 block w-full border-gray-300 rounded-md py-2 border px-3"
-              >
-                <option value="ADMIN">Administrator</option>
-                <option value="TRAINER">Trainer</option>
-                <option value="APPROVER">Approver</option>
-              </select>
-            </div>
             <div>
               <label
                 htmlFor="email"
@@ -122,9 +103,10 @@ export function Login() {
             <div>
               <button
                 type="submit"
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                disabled={submitting}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:cursor-not-allowed disabled:bg-blue-300"
               >
-                Sign in
+                {submitting ? "Signing in..." : "Sign in"}
               </button>
             </div>
 
