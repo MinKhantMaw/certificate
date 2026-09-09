@@ -69,6 +69,15 @@ function encodeCanvas(canvas: HTMLCanvasElement, quality: number) {
   );
 }
 
+function toDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("The optimized image could not be stored."));
+    reader.readAsDataURL(blob);
+  });
+}
+
 async function optimizeBackground(file: File) {
   const image = await loadImage(file);
   const scale = Math.min(
@@ -219,15 +228,9 @@ export function TemplateBuilder({
   ) => {
     const file = event.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
-    const response = await fetch("/api/templates/upload", {
-      method: "POST",
-      headers: { "Content-Type": file.type },
-      body: file,
-    });
-    if (!response.ok) return;
-    const result = (await response.json()) as { url: string };
-    if (kind === "background") update({ ...layout, background: result.url });
-    else if (selected) patchSelected({ src: result.url });
+    const source = await toDataUrl(file);
+    if (kind === "background") update({ ...layout, background: source });
+    else if (selected) patchSelected({ src: source });
   };
 
   const uploadBackground = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -255,17 +258,8 @@ export function TemplateBuilder({
 
     try {
       const optimizedImage = await optimizeBackground(file);
-      const response = await fetch("/api/templates/upload", {
-        method: "POST",
-        headers: { "Content-Type": optimizedImage.type },
-        body: optimizedImage,
-      });
-      const result = (await response.json().catch(() => null)) as
-        | { url?: string; error?: string }
-        | null;
-      if (!response.ok || !result?.url)
-        throw new Error(result?.error || "Background upload failed.");
-      update({ ...layoutRef.current, background: result.url });
+      const background = await toDataUrl(optimizedImage);
+      update({ ...layoutRef.current, background });
       URL.revokeObjectURL(previewUrl);
       if (backgroundPreviewUrlRef.current === previewUrl)
         backgroundPreviewUrlRef.current = undefined;
@@ -275,7 +269,9 @@ export function TemplateBuilder({
       if (backgroundPreviewUrlRef.current === previewUrl)
         backgroundPreviewUrlRef.current = undefined;
       setBackgroundError(
-        reason instanceof Error ? reason.message : "Background upload failed.",
+        reason instanceof Error
+          ? reason.message
+          : "Background processing failed.",
       );
     } finally {
       setBackgroundUploading(false);
@@ -351,7 +347,7 @@ export function TemplateBuilder({
           className={`flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 ${backgroundUploading ? "cursor-not-allowed bg-slate-100" : "cursor-pointer hover:bg-slate-50"}`}
         >
           <ImagePlus size={16} />
-          {backgroundUploading ? "Uploading..." : "Background"}
+          {backgroundUploading ? "Processing..." : "Background"}
           <input
             type="file"
             accept="image/png,image/jpeg,image/webp"

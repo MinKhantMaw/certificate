@@ -4,6 +4,10 @@
 
 This report traces the code path used when a user selects a certificate-template background image. The repository has no existing Markdown notes directory, so this report is stored in `docs/research/`.
 
+## Prototype Implementation
+
+The prototype now stores template metadata in browser `localStorage` and stores optimized background images as WebP data URLs in the saved template layout. It does not call `/api/templates` or `/api/templates/upload` at runtime, avoiding Vercel Function file writes. Data is available only in the browser where it was created and may be removed when browser storage is cleared.
+
 ## Confirmed Flow
 
 1. The template page lazy-loads the editor only after the create or edit form opens. This affects the first opening of the editor, but not an already-open background upload. Source: [CertificateTemplates.tsx](../../src/pages/CertificateTemplates.tsx#L15-L19), [CertificateTemplates.tsx](../../src/pages/CertificateTemplates.tsx#L133-L162).
@@ -22,10 +26,10 @@ This report traces the code path used when a user selects a certificate-template
 
 ## Recommended Changes
 
-1. Show a selected-file preview immediately with `URL.createObjectURL(file)`, while the upload continues in the background. Replace it with the returned persistent URL after success and revoke the object URL. This removes upload transfer time from the first visible preview.
+1. Show a selected-file preview immediately with `URL.createObjectURL(file)`, while processing continues in the background. Replace it with a persistent data URL after success and revoke the object URL. This removes processing time from the first visible preview.
 2. Add upload state to the background control: disabled selection while one upload is active, a clear pending indicator, and an error message for rejected or failed requests. This will make latency visible rather than looking like an ignored click.
 3. Enforce lower file-size and pixel-dimension limits before upload, then create a compressed or resized background derivative sized for the canvas. The editor canvas is at most 1123 by 794 for the built-in page sizes. Source: [TemplateBuilder.tsx](../../src/components/TemplateBuilder.tsx#L20-L26).
-4. For production, store assets in object storage or another durable upload service that supports direct or streamed uploads. The current API writes beneath `process.cwd()`; Vite wires this handler into the local development server, while `vercel.json` rewrites every route to `index.html`. These files do not establish a durable production asset-storage path. Source: [upload.ts](../../api/templates/upload.ts#L15-L15), [vite.config.ts](../../vite.config.ts#L6-L35), [vercel.json](../../vercel.json#L1-L8).
+4. For a shared or durable production system, store assets in object storage or another durable upload service that supports direct or streamed uploads. Browser `localStorage` is suitable only for this per-browser prototype.
 
 ## Fast Validation
 

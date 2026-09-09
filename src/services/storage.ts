@@ -31,19 +31,11 @@ export const storage = {
   initTemplates: async () => {
     if (templatesInitialized) return templateCache;
     if (templateInitPromise) return templateInitPromise;
-    templateInitPromise = (async () => {
-      try {
-        const response = await fetch('/api/templates');
-        if (!response.ok) throw new Error('Unable to load certificate templates.');
-        templateCache = await response.json() as CertificateTemplate[];
-      } catch (error) {
-        const legacy = read<CertificateTemplate[]>(KEYS.templates, []);
-        if (!legacy.length) throw error;
-        templateCache = legacy;
-      }
+    templateInitPromise = Promise.resolve().then(() => {
+      templateCache = read<CertificateTemplate[]>(KEYS.templates, []);
       templatesInitialized = true;
       return templateCache;
-    })();
+    });
     try {
       return await templateInitPromise;
     } finally {
@@ -51,22 +43,18 @@ export const storage = {
     }
   },
   saveTemplate: async (template: CertificateTemplate) => {
-    const response = await fetch('/api/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(template) });
-    if (!response.ok) throw new Error('Unable to save certificate template.');
-    templateCache = [...templateCache, await response.json() as CertificateTemplate];
+    templateCache = [...templateCache, template];
+    write(KEYS.templates, templateCache);
     templatesInitialized = true;
   },
   updateTemplate: async (template: CertificateTemplate) => {
-    const response = await fetch('/api/templates', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(template) });
-    if (!response.ok) throw new Error('Unable to update certificate template.');
-    const updated = await response.json() as CertificateTemplate;
-    templateCache = templateCache.map(item => item.id === template.id ? updated : item);
+    templateCache = templateCache.map(item => item.id === template.id ? template : item);
+    write(KEYS.templates, templateCache);
     templatesInitialized = true;
   },
   deleteTemplate: async (id: string) => {
-    const response = await fetch(`/api/templates?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-    if (!response.ok) throw new Error('Unable to delete certificate template.');
     templateCache = templateCache.filter(item => item.id !== id);
+    write(KEYS.templates, templateCache);
     templatesInitialized = true;
   },
   getTrainings: (): TrainingProgram[] => read<TrainingProgram[]>(KEYS.trainings, []),
@@ -222,7 +210,7 @@ export const storage = {
     ];
     const template: CertificateTemplate = { id: 'tpl-modern', name: 'Modern Professional', description: 'A clean, editorial certificate for professional learning.', design: 'classic', status: 'ACTIVE', createdBy: 'u-admin', createdAt: now(), updatedAt: now() };
     const training: TrainingProgram = { id: 'training-react', name: 'Advanced React Patterns', description: 'Production patterns for modern React applications.', trainingCode: 'REACT-26', organization: 'KBZ BANK', startDate: '2026-08-12', endDate: '2026-08-15', duration: '32 hours', location: 'Remote', trainingType: 'Professional development', trainerIds: ['u-trainer'], approverIds: ['u-approver', 'u-approver-2'], certificateTemplateId: template.id, status: 'COMPLETED', createdAt: now() };
-    write(KEYS.users, users); write(KEYS.trainings, [training]);
+    write(KEYS.users, users); write(KEYS.templates, [template]); write(KEYS.trainings, [training]);
     write(KEYS.trainees, [
       { id: 'trainee-1', trainingProgramId: training.id, recipientName: 'Alice Johnson', email: 'alice@example.com', employeeId: 'EMP-1042', trainingCode: 'REACT-26', department: 'Engineering', createdAt: now() },
       { id: 'trainee-2', trainingProgramId: training.id, recipientName: 'Bob Smith', email: 'bob@example.com', employeeId: 'EMP-1043', trainingCode: 'REACT-26', department: 'Product', createdAt: now() },
