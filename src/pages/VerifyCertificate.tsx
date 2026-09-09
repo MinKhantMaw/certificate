@@ -149,6 +149,14 @@ export function VerifyCertificate() {
                   </div>
                   <div className="sm:col-span-1">
                     <dt className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      Certificate ID
+                    </dt>
+                    <dd className="mt-1 font-mono text-lg font-bold tracking-wider text-gray-900">
+                      {cert.shortId || cert.id}
+                    </dd>
+                  </div>
+                  <div className="sm:col-span-1">
+                    <dt className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                       Certificate Number
                     </dt>
                     <dd className="mt-1 text-lg font-bold text-gray-900">

@@ -11,6 +11,44 @@ export function generateCertificateNumber(index: number): string {
   return `CERT-${year}-${String(index).padStart(6, '0')}`;
 }
 
+// Crockford-style base32: no I, L, O or U, so the ID cannot be misread when typed by hand.
+const SHORT_ID_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+const SHORT_ID_BODY_LENGTH = 9;
+export const SHORT_ID_LENGTH = SHORT_ID_BODY_LENGTH + 1;
+
+function randomAlphabetIndexes(count: number): number[] {
+  const indexes: number[] = [];
+  // Rejection sampling keeps the distribution uniform across the 32-char alphabet.
+  const limit = 256 - (256 % SHORT_ID_ALPHABET.length);
+  while (indexes.length < count) {
+    const bytes = new Uint8Array(count);
+    crypto.getRandomValues(bytes);
+    for (const byte of bytes) {
+      if (byte >= limit) continue;
+      indexes.push(byte % SHORT_ID_ALPHABET.length);
+      if (indexes.length === count) break;
+    }
+  }
+  return indexes;
+}
+
+function shortIdChecksum(indexes: number[]): string {
+  const total = indexes.reduce((sum, index) => sum + index, 0);
+  return SHORT_ID_ALPHABET[total % SHORT_ID_ALPHABET.length];
+}
+
+export function generateShortCertificateId(): string {
+  const indexes = randomAlphabetIndexes(SHORT_ID_BODY_LENGTH);
+  return indexes.map((index) => SHORT_ID_ALPHABET[index]).join('') + shortIdChecksum(indexes);
+}
+
+export function isValidShortCertificateId(value: string): boolean {
+  if (typeof value !== 'string' || value.length !== SHORT_ID_LENGTH) return false;
+  const indexes = [...value.slice(0, SHORT_ID_BODY_LENGTH)].map((character) => SHORT_ID_ALPHABET.indexOf(character));
+  if (indexes.some((index) => index < 0)) return false;
+  return shortIdChecksum(indexes) === value[SHORT_ID_BODY_LENGTH];
+}
+
 export function getPublicOrigin(): string {
   const configuredOrigin = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_PUBLIC_APP_URL;
   if (configuredOrigin) return configuredOrigin.replace(/\/$/, '');

@@ -87,7 +87,10 @@ export function CertificateList() {
               ) : (
                 filteredCerts.map((cert) => (
                   <tr key={cert.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{cert.id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <div className="font-mono tracking-wider">{cert.shortId || cert.id}</div>
+                      <div className="text-xs text-gray-500">{cert.certificateNumber}</div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{cert.recipientName}</div>
                       <div className="text-sm text-gray-500">{cert.email}</div>

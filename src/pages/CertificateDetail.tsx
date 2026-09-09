@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { storage } from "../services/storage";
 import { Certificate } from "../types";
 import { CertificatePreview } from "../components/CertificatePreview";
+import { useEncryptedQr } from "../hooks/useEncryptedQr";
 import { getVerificationUrl } from "../utils";
 import {
   ArrowLeft,
@@ -10,11 +11,52 @@ import {
   ShieldAlert,
   ExternalLink,
   Printer,
+  RefreshCw,
+  QrCode,
+  EyeOff,
 } from "lucide-react";
+
+// Printing before the QR resolves would produce a certificate with an empty QR box.
+function PrintCertificateButton({
+  certificate,
+  requiresQr,
+}: {
+  certificate: Certificate;
+  requiresQr: boolean;
+}) {
+  const { status, retry } = useEncryptedQr(certificate);
+
+  if (requiresQr && status === "error")
+    return (
+      <button
+        onClick={retry}
+        className="flex items-center px-4 py-2 border border-amber-300 text-amber-700 rounded-lg hover:bg-amber-50 font-medium bg-white"
+        title="The verification QR code could not be generated. Click to try again."
+      >
+        <RefreshCw className="w-4 h-4 mr-2" />
+        Retry QR
+      </button>
+    );
+
+  const ready = !requiresQr || status === "ready";
+
+  return (
+    <button
+      onClick={() => window.print()}
+      disabled={!ready}
+      title={ready ? undefined : "Waiting for the verification QR code"}
+      className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:cursor-not-allowed disabled:bg-blue-300"
+    >
+      <Printer className="w-4 h-4 mr-2" />
+      {ready ? "Download PDF" : "Preparing QR..."}
+    </button>
+  );
+}
 
 export function CertificateDetail() {
   const { id } = useParams<{ id: string }>();
   const [cert, setCert] = useState<Certificate | null>(null);
+  const [showQr, setShowQr] = useState(true);
 
   useEffect(() => {
     if (id) {
@@ -27,10 +69,6 @@ export function CertificateDetail() {
       storage.updateCertificateStatus(cert.id, "REVOKED");
       setCert({ ...cert, status: "REVOKED" });
     }
-  };
-
-  const handlePrint = () => {
-    window.print();
   };
 
   if (!cert) {
@@ -72,12 +110,23 @@ export function CertificateDetail() {
             Verification Page
           </a>
           <button
-            onClick={handlePrint}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+            onClick={() => setShowQr((value) => !value)}
+            aria-pressed={showQr}
+            className={`flex items-center px-4 py-2 border rounded-lg font-medium ${showQr ? "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+            title={
+              showQr
+                ? "Hide the verification QR code on this certificate"
+                : "Show the verification QR code on this certificate"
+            }
           >
-            <Printer className="w-4 h-4 mr-2" />
-            Download PDF
+            {showQr ? (
+              <QrCode className="w-4 h-4 mr-2" />
+            ) : (
+              <EyeOff className="w-4 h-4 mr-2" />
+            )}
+            {showQr ? "QR On" : "QR Off"}
           </button>
+          <PrintCertificateButton certificate={cert} requiresQr={showQr} />
           {cert.status === "VALID" && (
             <button
               onClick={handleRevoke}
@@ -127,7 +176,13 @@ export function CertificateDetail() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Certificate ID</span>
-              <span className="font-medium">{cert.id}</span>
+              <span className="font-mono font-medium tracking-wider">
+                {cert.shortId || cert.id}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Certificate Number</span>
+              <span className="font-medium">{cert.certificateNumber}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Token</span>
@@ -145,6 +200,7 @@ export function CertificateDetail() {
           <CertificatePreview
             certificate={cert}
             baseUrl={window.location.origin}
+            showQr={showQr}
           />
         </div>
       </div>

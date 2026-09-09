@@ -1,5 +1,13 @@
 import { AuditLog, Certificate, CertificateApproval, CertificateTemplate, ImportBatch, ImportRecord, PendingImportTrainee, Trainee, TrainingProgram, User, UserRole } from '../types';
-import { getVerificationUrl } from '../utils';
+import { generateShortCertificateId, getVerificationUrl } from '../utils';
+
+const createUniqueShortId = (taken: Set<string>): string => {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const candidate = generateShortCertificateId();
+    if (!taken.has(candidate)) { taken.add(candidate); return candidate; }
+  }
+  throw new Error('Unable to generate a unique certificate ID. Please try again.');
+};
 
 const KEYS = { users: 'cms_users', templates: 'cms_templates', trainings: 'cms_trainings', trainees: 'cms_trainees', certificates: 'cms_certificates', approvals: 'cms_approvals', imports: 'cms_imports', importBatches: 'cms_import_batches', pendingImportTrainees: 'cms_pending_import_trainees', audit: 'cms_audit', auth: 'cms_auth' } as const;
 let templateCache: CertificateTemplate[] = [];
@@ -149,22 +157,24 @@ export const storage = {
     );
     const userById = new Map(users.map((user) => [user.id, user]));
     let changed = false;
+    const takenShortIds = new Set(certificates.map((certificate) => certificate.shortId).filter(Boolean) as string[]);
     const migrated = certificates.map(certificate => {
       const program = certificate.trainingProgramId ? trainingById.get(certificate.trainingProgramId) : undefined;
       const approvedApproval = approvedApprovalByCertificate.get(certificate.id);
       const signer = approvedApproval ? userById.get(approvedApproval.approverId) : undefined;
       const updated = {
         ...certificate,
+        ...(certificate.shortId ? {} : { shortId: createUniqueShortId(takenShortIds) }),
         ...(certificate.certificateTemplateId || !program ? {} : { certificateTemplateId: program.certificateTemplateId }),
         ...(certificate.signatureUserId || !signer ? {} : { signatureUserId: signer.id, signatureImage: signer.signatureImage, signerName: signer.name, signerTitle: 'Approver' }),
       };
-      if (updated.certificateTemplateId !== certificate.certificateTemplateId || updated.signatureUserId !== certificate.signatureUserId) changed = true;
+      if (updated.certificateTemplateId !== certificate.certificateTemplateId || updated.signatureUserId !== certificate.signatureUserId || updated.shortId !== certificate.shortId) changed = true;
       return updated;
     });
     if (changed) write(KEYS.certificates, migrated);
     return migrated.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
-  getCertificateById: (id: string) => storage.getCertificates().find(item => item.id === id || item.certificateNumber === id),
+  getCertificateById: (id: string) => storage.getCertificates().find(item => item.id === id || item.certificateNumber === id || item.shortId === id),
   getCertificateByToken: (token: string) => storage.getCertificates().find(item => item.verificationToken === decodeURIComponent(token).trim()),
   saveCertificates: (certificates: Certificate[]) => write(KEYS.certificates, [...storage.getCertificates(), ...certificates]),
   updateCertificate: (certificate: Certificate) => write(KEYS.certificates, storage.getCertificates().map(item => item.id === certificate.id ? certificate : item)),
@@ -181,11 +191,13 @@ export const storage = {
     const trainees = storage.getTrainees().filter(trainee => trainee.trainingProgramId === trainingProgramId && requestedTraineeIds.has(trainee.id));
     const timestamp = now();
     const nextCertificateIndex = existingCertificates.length + 1;
+    const takenShortIds = new Set(existingCertificates.map((certificate) => certificate.shortId).filter(Boolean) as string[]);
     const certificates: Certificate[] = trainees.filter(trainee => !existingTraineeIds.has(trainee.id)).map((trainee, index) => {
       const number = `CERT-${new Date().getFullYear()}-${String(nextCertificateIndex + index).padStart(6, '0')}`;
+      const shortId = createUniqueShortId(takenShortIds);
       const token = crypto.randomUUID();
       const dynamicData = trainee.dynamicData || {};
-      return { id: number, certificateNumber: number, verificationToken: token, verificationUrl: getVerificationUrl(token), recipientName: String(dynamicData.name || dynamicData.recipient_name || trainee.recipientName), certificateTitle: String(dynamicData.certificate_title || 'Certificate of Completion'), courseName: String(dynamicData.course || dynamicData.course_name || program.name), issueDate: String(dynamicData.issue_date || dynamicData.completion_date || program.endDate || timestamp.slice(0, 10)), organization: String(dynamicData.organization || program.organization), certificateType: String(dynamicData.certificate_type || 'completion'), email: trainee.email, status: 'PENDING_APPROVAL', certificateTemplateId: template.id, dynamicData: { ...dynamicData, certificate_id: dynamicData.certificate_id || number }, trainingProgramId, traineeId: trainee.id, trainerIds: program.trainerIds, approverIds: program.approverIds, createdAt: timestamp };
+      return { id: number, certificateNumber: number, shortId, verificationToken: token, verificationUrl: getVerificationUrl(token), recipientName: String(dynamicData.name || dynamicData.recipient_name || trainee.recipientName), certificateTitle: String(dynamicData.certificate_title || 'Certificate of Completion'), courseName: String(dynamicData.course || dynamicData.course_name || program.name), issueDate: String(dynamicData.issue_date || dynamicData.completion_date || program.endDate || timestamp.slice(0, 10)), organization: String(dynamicData.organization || program.organization), certificateType: String(dynamicData.certificate_type || 'completion'), email: trainee.email, status: 'PENDING_APPROVAL', certificateTemplateId: template.id, dynamicData: { ...dynamicData, certificate_id: dynamicData.certificate_id || shortId, short_id: shortId }, trainingProgramId, traineeId: trainee.id, trainerIds: program.trainerIds, approverIds: program.approverIds, createdAt: timestamp };
     });
     storage.saveCertificates(certificates);
     storage.saveApprovals(certificates.flatMap(cert => program.approverIds.map((approverId, index): CertificateApproval => ({ id: `${cert.id}-approval-${index}`, certificateId: cert.id, approverId, status: 'PENDING', createdAt: timestamp, updatedAt: timestamp }))));

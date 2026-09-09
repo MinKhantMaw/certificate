@@ -1,19 +1,40 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { storage } from "../services/storage";
+import { useEncryptedQr } from "../hooks/useEncryptedQr";
 import { Certificate, TemplateElement, TemplateLayout } from "../types";
-import { formatDate, getVerificationUrl, resolveTemplateValue } from "../utils";
+import { formatDate, resolveTemplateValue } from "../utils";
+
+function CertificateQrCode({ certificate }: { certificate: Certificate }) {
+  const { url, status } = useEncryptedQr(certificate);
+  if (status === "ready")
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        title="Scan or click to verify this certificate"
+        className="block h-full w-full"
+      >
+        <QRCodeSVG value={url} width="100%" height="100%" level="M" />
+      </a>
+    );
+  return (
+    <div className="flex h-full w-full items-center justify-center border border-dashed border-[#c9c9c9] bg-white p-1 text-center text-[clamp(5px,.6vw,8px)] uppercase leading-tight tracking-wide text-[#999]">
+      {status === "error" ? "QR unavailable" : status === "idle" ? "QR" : ""}
+    </div>
+  );
+}
 
 export function CertificatePreview({
   certificate,
   baseUrl,
+  showQr = true,
 }: {
   certificate: Certificate;
   baseUrl?: string;
+  showQr?: boolean;
 }) {
-  const verificationUrl =
-    certificate.verificationUrl ||
-    getVerificationUrl(certificate.verificationToken);
   const hasTemplate = Boolean(certificate.certificateTemplateId);
   const [loadingTemplate, setLoadingTemplate] = useState(
     hasTemplate && !storage.getTemplates().length,
@@ -67,7 +88,7 @@ export function CertificatePreview({
       <DynamicCertificatePreview
         certificate={certificate}
         layout={template.layout}
-        verificationUrl={verificationUrl}
+        showQr={showQr}
       />
     );
   }
@@ -165,18 +186,21 @@ export function CertificatePreview({
               {formatDate(certificate.issueDate)}
             </span>
           </div>
-          <a
-            href={verificationUrl}
-            target="_blank"
-            rel="noreferrer"
-            title="Scan or click to verify this certificate"
-            className="absolute bottom-0 left-1/2 flex shrink-0 -translate-x-1/2 flex-col items-center gap-1 border border-[#d9d9d9] bg-white p-1"
-          >
-            <QRCodeSVG value={verificationUrl} size={60} level="M" />
-            <span className="text-[clamp(6px,.75vw,9px)] text-[#555]">
-              Scan to Verify
+          <div className="absolute bottom-0 left-1/2 flex shrink-0 -translate-x-1/2 flex-col items-center gap-1">
+            {showQr && (
+              <div className="flex flex-col items-center gap-1 border border-[#d9d9d9] bg-white p-1">
+                <div className="h-15 w-15">
+                  <CertificateQrCode certificate={certificate} />
+                </div>
+                <span className="text-[clamp(6px,.75vw,9px)] text-[#555]">
+                  Scan to Verify
+                </span>
+              </div>
+            )}
+            <span className="font-mono text-[clamp(6px,.75vw,9px)] tracking-wider text-[#555]">
+              ID: {certificate.shortId || certificate.certificateNumber}
             </span>
-          </a>
+          </div>
           <div className="text-right">
             {certificate.signatureImage && (
               <img
@@ -207,11 +231,11 @@ export function CertificatePreview({
 function DynamicCertificatePreview({
   certificate,
   layout,
-  verificationUrl,
+  showQr,
 }: {
   certificate: Certificate;
   layout: TemplateLayout;
-  verificationUrl: string;
+  showQr: boolean;
 }) {
   const [backgroundError, setBackgroundError] = useState(false);
   const data: Record<string, unknown> = {
@@ -220,13 +244,27 @@ function DynamicCertificatePreview({
     recipient_name: certificate.recipientName,
     course: certificate.dynamicData?.course || certificate.courseName,
     course_name: certificate.courseName,
+    short_id: certificate.shortId || certificate.certificateNumber,
+    certificate_number: certificate.certificateNumber,
     certificate_id:
-      certificate.dynamicData?.certificate_id || certificate.certificateNumber,
+      certificate.dynamicData?.certificate_id ||
+      certificate.shortId ||
+      certificate.certificateNumber,
     issue_date: certificate.dynamicData?.issue_date || certificate.issueDate,
     department: certificate.dynamicData?.department || "",
   };
   const signatures = storage.getUsers();
   const aspectRatio = `${layout.canvas.width} / ${layout.canvas.height}`;
+  const elements = layout.elements || [];
+  const hasQrElement = elements.some((element) => element.type === "qr");
+  const hasIdElement = elements.some(
+    (element) =>
+      element.type === "text" &&
+      ["certificate_id", "short_id", "certificate_number"].includes(
+        (element.key || "").replace(/^\{\{|\}\}$/g, "").trim().toLowerCase(),
+      ),
+  );
+  const certificateId = certificate.shortId || certificate.certificateNumber;
   if (
     layout.version !== 1 ||
     layout.canvas.width <= 0 ||
@@ -304,7 +342,7 @@ function DynamicCertificatePreview({
             />
           );
         if (element.type === "qr")
-          return (
+          return showQr ? (
             <div
               key={element.id}
               style={{
@@ -315,14 +353,9 @@ function DynamicCertificatePreview({
                 background: "white",
               }}
             >
-              <QRCodeSVG
-                value={verificationUrl}
-                width="100%"
-                height="100%"
-                level="M"
-              />
+              <CertificateQrCode certificate={certificate} />
             </div>
-          );
+          ) : null;
         const source =
           element.type === "signature"
             ? signatures.find((user) => user.id === element.signatureId)
@@ -341,6 +374,25 @@ function DynamicCertificatePreview({
           />
         ) : null;
       })}
+      {(!hasIdElement || (showQr && !hasQrElement)) && (
+        <div className="absolute bottom-[3%] left-1/2 flex w-[14%] -translate-x-1/2 flex-col items-center gap-[3%]">
+          {showQr && !hasQrElement && (
+            <div className="flex w-full flex-col items-center gap-[4%] bg-white p-[4%]">
+              <div className="aspect-square w-[76%]">
+                <CertificateQrCode certificate={certificate} />
+              </div>
+              <span className="text-[clamp(5px,.6vw,8px)] leading-none text-[#555]">
+                Scan to Verify
+              </span>
+            </div>
+          )}
+          {!hasIdElement && (
+            <span className="font-mono text-[clamp(5px,.6vw,8px)] leading-none tracking-wider text-[#555]">
+              ID: {certificateId}
+            </span>
+          )}
+        </div>
+      )}
       {certificate.status === "REVOKED" && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center overflow-hidden">
           <div className="-rotate-45 border-8 border-red-500 px-8 py-2 text-8xl font-bold uppercase text-red-500 opacity-30">

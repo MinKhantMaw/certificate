@@ -1,0 +1,77 @@
+{
+  "id": "d416988c-c289-4584-bd9c-210b2d3dcfe7",
+  "name": "AWS",
+  "description": "testing",
+  "previewImage": "/api/templates/assets/60afcb57-a542-476e-ba98-8480a9813ea5",
+  "layout": {
+    "version": 1,
+    "canvas": {
+      "width": 1123,
+      "height": 794,
+      "pageSize": "A4",
+      "orientation": "landscape"
+    },
+    "elements": [
+      {
+        "id": "text-289e7540-4005-4b41-b324-b04e01d8da72",
+        "type": "text",
+        "x": 382.6513768404868,
+        "y": 315.061203102075,
+        "width": 300,
+        "height": 70,
+        "rotation": 0,
+        "key": "name",
+        "style": {
+          "fontFamily": "Arial",
+          "fontSize": 40,
+          "fontWeight": "bold",
+          "color": "#111827",
+          "align": "center",
+          "lineHeight": 1.2
+        }
+      },
+      {
+        "id": "text-41c632de-b086-4199-8ad0-88a86105e950",
+        "type": "text",
+        "x": 515.3550433742479,
+        "y": 365.07634085563234,
+        "width": 300,
+        "height": 70,
+        "rotation": 0,
+        "key": "employee_id",
+        "style": {
+          "fontFamily": "Arial",
+          "fontSize": 20,
+          "fontWeight": "bold",
+          "color": "#111827",
+          "align": "center",
+          "lineHeight": 1.2
+        }
+      },
+      {
+        "id": "text-c5d75393-b9f5-4492-9585-48007931b619",
+        "type": "text",
+        "x": -3.9201734969916977,
+        "y": 707.4876685530636,
+        "width": 300,
+        "height": 70,
+        "rotation": 0,
+        "key": "completion_date",
+        "style": {
+          "fontFamily": "Arial",
+          "fontSize": 20,
+          "fontWeight": "bold",
+          "color": "#111827",
+          "align": "center",
+          "lineHeight": 1.2
+        }
+      }
+    ],
+    "background": "/api/templates/assets/60afcb57-a542-476e-ba98-8480a9813ea5"
+  },
+  "design": "konva",
+  "status": "ACTIVE",
+  "createdBy": "u-approver",
+  "createdAt": "2026-09-09T07:35:52.325Z",
+  "updatedAt": "2026-09-09T07:36:13.007Z"
+}

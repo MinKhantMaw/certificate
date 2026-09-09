@@ -491,6 +491,7 @@ function previewCertificate(
   return {
     id: "preview",
     certificateNumber: "PREVIEW",
+    shortId: "PREVIEW-01",
     verificationToken: "preview",
     verificationUrl: "",
     recipientName: row.recipient_name,

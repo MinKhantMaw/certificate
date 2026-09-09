@@ -148,8 +148,12 @@ export interface CertificateApproval {
 export interface Certificate {
   id: string;
   certificateNumber: string;
+  shortId?: string;
   verificationToken: string;
   verificationUrl: string;
+  encryptedQrUrl?: string;
+  encryptedQrToken?: string;
+  encryptedQrAt?: string;
   recipientName: string;
   certificateTitle: string;
   courseName: string;
