@@ -28,6 +28,7 @@ export function CertificateTemplates() {
   const [previewImage, setPreviewImage] = useState<string | undefined>();
   const [layout, setLayout] = useState<TemplateLayout>(createDefaultLayout);
   const [error, setError] = useState("");
+  const [backgroundUploading, setBackgroundUploading] = useState(false);
   useEffect(() => {
     storage
       .initTemplates()
@@ -77,6 +78,8 @@ export function CertificateTemplates() {
       return setError("The template layout is invalid.");
     if (!keys.length && !layout.elements.length)
       return setError("Add at least one element to the template.");
+    if (backgroundUploading || layout.background?.startsWith("blob:"))
+      return setError("Wait for the background image upload to finish.");
     setError("");
     const timestamp = new Date().toISOString();
     if (editingId) {
@@ -199,6 +202,7 @@ export function CertificateTemplates() {
                 layout,
               }}
               onChange={setLayout}
+              onBackgroundUploadChange={setBackgroundUploading}
             />
           </Suspense>
           {error && (
@@ -206,8 +210,15 @@ export function CertificateTemplates() {
               {error}
             </p>
           )}
-          <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white">
-            {editingId ? "Save changes" : "Create template"}
+          <button
+            disabled={backgroundUploading}
+            className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {backgroundUploading
+              ? "Uploading background..."
+              : editingId
+                ? "Save changes"
+                : "Create template"}
           </button>
         </form>
       )}

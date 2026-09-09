@@ -10,8 +10,8 @@ interface Response {
 
 const root = path.join(process.cwd(), 'storage', 'templates', 'assets');
 const assetPattern = /^[a-f0-9-]+$/i;
-const extensions = ['.png', '.jpg', '.webp', '.gif'];
-const contentTypes: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' };
+const extensions = ['.png', '.jpg', '.webp'];
+const contentTypes: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp' };
 
 export default async function handler(req: Request, res: Response) {
   const value = req.query.assetId;

@@ -16,7 +16,7 @@ interface Response {
 const root = path.join(process.cwd(), 'storage', 'templates', 'assets');
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const types: Record<string, string> = {
-  'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/gif': '.gif',
+  'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp',
 };
 
 export const config = { api: { bodyParser: false } };
@@ -46,7 +46,11 @@ export default async function handler(req: Request, res: Response) {
   });
   if (!accepted) return res.status(413).json({ error: 'Images must be 10 MB or smaller.' });
   const assetId = crypto.randomUUID();
-  await fs.mkdir(root, { recursive: true });
-  await fs.writeFile(path.join(root, `${assetId}${extension}`), Buffer.concat(chunks));
-  return res.status(200).json({ url: `/api/templates/assets/${assetId}`, assetId });
+  try {
+    await fs.mkdir(root, { recursive: true });
+    await fs.writeFile(path.join(root, `${assetId}${extension}`), Buffer.concat(chunks));
+    return res.status(200).json({ url: `/api/templates/assets/${assetId}`, assetId });
+  } catch {
+    return res.status(500).json({ error: 'Unable to store the uploaded image.' });
+  }
 }

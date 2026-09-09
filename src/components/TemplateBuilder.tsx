@@ -42,6 +42,52 @@ const SAMPLE_DATA: Record<string, string> = {
   issue_date: "2026-09-07",
   department: "Engineering",
 };
+const MAX_SOURCE_BYTES = 10 * 1024 * 1024;
+const MAX_OUTPUT_BYTES = 1024 * 1024;
+const MAX_IMAGE_EDGE = 1920;
+const BACKGROUND_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+
+function loadImage(file: Blob) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new window.Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("The selected file could not be read as an image."));
+    };
+    image.src = url;
+  });
+}
+
+function encodeCanvas(canvas: HTMLCanvasElement, quality: number) {
+  return new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/webp", quality),
+  );
+}
+
+async function optimizeBackground(file: File) {
+  const image = await loadImage(file);
+  const scale = Math.min(
+    1,
+    MAX_IMAGE_EDGE / Math.max(image.naturalWidth, image.naturalHeight),
+  );
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Image optimization is unavailable in this browser.");
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  for (const quality of [0.9, 0.8, 0.7, 0.6, 0.5]) {
+    const result = await encodeCanvas(canvas, quality);
+    if (result && result.size <= MAX_OUTPUT_BYTES) return result;
+  }
+  throw new Error("The optimized image must be 1 MB or smaller.");
+}
 
 function useImage(src?: string) {
   const [image, setImage] = useState<HTMLImageElement>();
@@ -60,20 +106,27 @@ function useImage(src?: string) {
 export function TemplateBuilder({
   template,
   onChange,
+  onBackgroundUploadChange,
 }: {
   template: CertificateTemplate;
   onChange: (layout: TemplateLayout) => void;
+  onBackgroundUploadChange?: (uploading: boolean) => void;
 }) {
   const [layout, setLayout] = useState<TemplateLayout>(
     template.layout || createDefaultLayout(),
   );
   const [selectedId, setSelectedId] = useState<string>();
   const [zoom, setZoom] = useState(0.52);
+  const [backgroundUploading, setBackgroundUploading] = useState(false);
+  const [backgroundError, setBackgroundError] = useState("");
   const transformerRef = useRef<Konva.Transformer>(null);
   const stageRef = useRef<Konva.Stage>(null);
+  const backgroundPreviewUrlRef = useRef<string | undefined>(undefined);
+  const layoutRef = useRef(layout);
   const signatures = storage.getUsers().filter((user) => user.signatureImage);
   const selected = layout.elements.find((element) => element.id === selectedId);
   const update = (next: TemplateLayout) => {
+    layoutRef.current = next;
     setLayout(next);
     onChange(next);
   };
@@ -85,6 +138,14 @@ export function TemplateBuilder({
       transformerRef.current.getLayer()?.batchDraw();
     }
   }, [selectedId, layout.elements.length]);
+
+  useEffect(
+    () => () => {
+      if (backgroundPreviewUrlRef.current)
+        URL.revokeObjectURL(backgroundPreviewUrlRef.current);
+    },
+    [],
+  );
 
   const addElement = (type: TemplateElement["type"]) => {
     const id = `${type}-${crypto.randomUUID()}`;
@@ -169,6 +230,68 @@ export function TemplateBuilder({
     else if (selected) patchSelected({ src: result.url });
   };
 
+  const uploadBackground = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || backgroundUploading) return;
+    if (!BACKGROUND_TYPES.has(file.type)) {
+      setBackgroundError("Choose a PNG, JPEG, or WebP image.");
+      return;
+    }
+    if (file.size > MAX_SOURCE_BYTES) {
+      setBackgroundError("Background images must be 10 MB or smaller.");
+      return;
+    }
+
+    const previousBackground = layoutRef.current.background;
+    const previewUrl = URL.createObjectURL(file);
+    if (backgroundPreviewUrlRef.current)
+      URL.revokeObjectURL(backgroundPreviewUrlRef.current);
+    backgroundPreviewUrlRef.current = previewUrl;
+    setBackgroundError("");
+    setBackgroundUploading(true);
+    onBackgroundUploadChange?.(true);
+    update({ ...layoutRef.current, background: previewUrl });
+
+    try {
+      const optimizedImage = await optimizeBackground(file);
+      const response = await fetch("/api/templates/upload", {
+        method: "POST",
+        headers: { "Content-Type": optimizedImage.type },
+        body: optimizedImage,
+      });
+      const result = (await response.json().catch(() => null)) as
+        | { url?: string; error?: string }
+        | null;
+      if (!response.ok || !result?.url)
+        throw new Error(result?.error || "Background upload failed.");
+      update({ ...layoutRef.current, background: result.url });
+      URL.revokeObjectURL(previewUrl);
+      if (backgroundPreviewUrlRef.current === previewUrl)
+        backgroundPreviewUrlRef.current = undefined;
+    } catch (reason) {
+      update({ ...layoutRef.current, background: previousBackground });
+      URL.revokeObjectURL(previewUrl);
+      if (backgroundPreviewUrlRef.current === previewUrl)
+        backgroundPreviewUrlRef.current = undefined;
+      setBackgroundError(
+        reason instanceof Error ? reason.message : "Background upload failed.",
+      );
+    } finally {
+      setBackgroundUploading(false);
+      onBackgroundUploadChange?.(false);
+    }
+  };
+
+  const removeBackground = () => {
+    if (backgroundPreviewUrlRef.current) {
+      URL.revokeObjectURL(backgroundPreviewUrlRef.current);
+      backgroundPreviewUrlRef.current = undefined;
+    }
+    setBackgroundError("");
+    update({ ...layoutRef.current, background: undefined });
+  };
+
   const setCanvas = (
     pageSize: TemplatePageSize,
     orientation: TemplateOrientation,
@@ -224,19 +347,29 @@ export function TemplateBuilder({
           label="Shape"
           onClick={() => addElement("shape")}
         /> */}
-        <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
-          <ImagePlus size={16} /> Background
+        <label
+          className={`flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 ${backgroundUploading ? "cursor-not-allowed bg-slate-100" : "cursor-pointer hover:bg-slate-50"}`}
+        >
+          <ImagePlus size={16} />
+          {backgroundUploading ? "Uploading..." : "Background"}
           <input
             type="file"
-            accept="image/*"
+            accept="image/png,image/jpeg,image/webp"
             className="hidden"
-            onChange={(event) => uploadFile(event, "background")}
+            disabled={backgroundUploading}
+            onChange={uploadBackground}
           />
         </label>
+        {backgroundError && (
+          <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+            {backgroundError}
+          </p>
+        )}
         {layout.background && (
           <button
             type="button"
-            onClick={() => update({ ...layout, background: undefined })}
+            onClick={removeBackground}
+            disabled={backgroundUploading}
             className="text-xs text-rose-700"
           >
             Remove background
