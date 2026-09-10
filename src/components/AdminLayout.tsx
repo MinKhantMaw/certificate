@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
 import {
   LayoutDashboard,
   FileBadge,
@@ -19,6 +20,7 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const user = storage.getUser();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     storage.logout();
@@ -43,16 +45,16 @@ export function AdminLayout() {
     // { to: "/users", icon: Users, label: "Users" },
     ...(user?.role === "APPROVER"
       ? [
-          {
-            to: "/approvals/imports",
-            icon: ShieldCheck,
-            label: "Import Approvals",
-          },
-          {
-            to: "/approvals",
-            icon: ShieldCheck,
-            label: "Certificate Approvals",
-          },
+          // {
+          //   to: "/approvals/imports",
+          //   icon: ShieldCheck,
+          //   label: "Import Approvals",
+          // },
+          // {
+          //   to: "/approvals",
+          //   icon: ShieldCheck,
+          //   label: "Certificate Approvals",
+          // },
         ]
       : []),
     // { to: "/profile", icon: UserRound, label: "My Signature" },
@@ -64,9 +66,9 @@ export function AdminLayout() {
     "Dashboard";
 
   return (
-    <div className="flex h-screen bg-gray-50 font-sans text-gray-900">
+    <div className="flex min-h-screen bg-gray-50 font-sans text-gray-900">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
+      <aside className="hidden w-64 shrink-0 border-r border-gray-200 bg-white md:flex md:flex-col">
         <div className="h-16 flex items-center px-6 border-b border-gray-200">
           <FileBadge className="w-6 h-6 text-blue-600 mr-2" />
           <span className="font-bold text-lg tracking-tight">Certifly</span>
@@ -94,11 +96,16 @@ export function AdminLayout() {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Top bar */}
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center">
-            <button className="md:hidden p-2 -ml-2 text-gray-400 hover:text-gray-500">
+            <button
+              onClick={() => setMobileMenuOpen((open) => !open)}
+              aria-label="Toggle navigation menu"
+              aria-expanded={mobileMenuOpen}
+              className="-ml-2 p-2 text-gray-400 hover:text-gray-500 md:hidden"
+            >
               <Menu className="w-6 h-6" />
             </button>
             <h1 className="text-xl font-semibold text-gray-900 ml-2 md:ml-0">
@@ -126,7 +133,31 @@ export function AdminLayout() {
         </header>
 
         {/* Main scrollable area */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        {mobileMenuOpen && (
+          <div className="border-b border-gray-200 bg-white p-3 md:hidden">
+            <nav className="space-y-1">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={({ isActive }) =>
+                    `flex items-center rounded-md px-3 py-2 text-sm font-medium ${
+                      isActive
+                        ? "bg-blue-50 text-blue-700"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`
+                  }
+                >
+                  <item.icon className="mr-3 h-5 w-5 shrink-0" />
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
+          </div>
+        )}
+
+        <main className="min-w-0 flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
             <Outlet />
           </div>

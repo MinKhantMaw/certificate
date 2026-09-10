@@ -256,12 +256,14 @@ function DynamicCertificatePreview({
   const signatures = storage.getUsers();
   const aspectRatio = `${layout.canvas.width} / ${layout.canvas.height}`;
   const elements = layout.elements || [];
-  const hasQrElement = elements.some((element) => element.type === "qr");
   const hasIdElement = elements.some(
     (element) =>
       element.type === "text" &&
       ["certificate_id", "short_id", "certificate_number"].includes(
-        (element.key || "").replace(/^\{\{|\}\}$/g, "").trim().toLowerCase(),
+        (element.key || "")
+          .replace(/^\{\{|\}\}$/g, "")
+          .trim()
+          .toLowerCase(),
       ),
   );
   const certificateId = certificate.shortId || certificate.certificateNumber;
@@ -374,18 +376,8 @@ function DynamicCertificatePreview({
           />
         ) : null;
       })}
-      {(!hasIdElement || (showQr && !hasQrElement)) && (
+      {!hasIdElement && (
         <div className="absolute bottom-[3%] left-1/2 flex w-[14%] -translate-x-1/2 flex-col items-center gap-[3%]">
-          {showQr && !hasQrElement && (
-            <div className="flex w-full flex-col items-center gap-[4%] bg-white p-[4%]">
-              <div className="aspect-square w-[76%]">
-                <CertificateQrCode certificate={certificate} />
-              </div>
-              <span className="text-[clamp(5px,.6vw,8px)] leading-none text-[#555]">
-                Scan to Verify
-              </span>
-            </div>
-          )}
           {!hasIdElement && (
             <span className="font-mono text-[clamp(5px,.6vw,8px)] leading-none tracking-wider text-[#555]">
               ID: {certificateId}

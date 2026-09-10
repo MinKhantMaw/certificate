@@ -94,11 +94,11 @@ export const storage = {
   savePendingImportTrainees: (rows: PendingImportTrainee[]) => write(KEYS.pendingImportTrainees, [...storage.getPendingImportTrainees(), ...rows]),
 
   // ✅ FIXED: now creates Trainees -> Certificates -> CertificateApprovals in one flow
-  approveImport: (batchId: string, approverId: string) => {
+  approveImport: (batchId: string, approverId: string | null) => {
     const batch = storage.getImportBatch(batchId);
     if (!batch || batch.status !== 'PENDING_APPROVAL') throw new Error('Import is not awaiting approval.');
     const program = storage.getTraining(batch.trainingProgramId);
-    if (!program || !program.approverIds.includes(approverId)) throw new Error('Approver is not assigned to this training program.');
+    if (!program || (approverId && !program.approverIds.includes(approverId))) throw new Error('Approver is not assigned to this training program.');
     if (program.status !== 'COMPLETED') throw new Error('Certificates can only be issued once the training program is marked COMPLETED.');
     const templateId = batch.templateId;
     if (!templateId) throw new Error('A certificate template must be selected before generation.');
@@ -119,11 +119,11 @@ export const storage = {
       dynamicData: row.dynamicData,
     }));
     storage.saveTrainees(newTrainees);
-    storage.updateImportBatch({ ...batch, status: 'APPROVED', reviewedBy: approverId, reviewedAt: now(), updatedAt: now() });
+    storage.updateImportBatch({ ...batch, status: 'APPROVED', reviewedBy: approverId || 'system', reviewedAt: now(), updatedAt: now() });
 
     // this is the link that was missing — without it, data never reaches Certificate Approvals
     storage.issueCertificates(batch.trainingProgramId, newTrainees.map(trainee => trainee.id), template.id);
-    storage.addAuditLog('Import approved and certificates issued', 'ImportBatch', batch.id);
+    storage.addAuditLog(approverId ? 'Import approved and certificates issued' : 'Import auto-approved and certificates issued', 'ImportBatch', batch.id);
   },
 
   rejectImport: (batchId: string, approverId: string, rejectionReason: string) => {
@@ -150,13 +150,16 @@ export const storage = {
       const program = certificate.trainingProgramId ? trainingById.get(certificate.trainingProgramId) : undefined;
       const approvedApproval = approvedApprovalByCertificate.get(certificate.id);
       const signer = approvedApproval ? userById.get(approvedApproval.approverId) : undefined;
+      const verificationToken = certificate.verificationToken || crypto.randomUUID();
       const updated = {
         ...certificate,
+        verificationToken,
+        verificationUrl: certificate.verificationUrl || getVerificationUrl(verificationToken),
         ...(certificate.shortId ? {} : { shortId: createUniqueShortId(takenShortIds) }),
         ...(certificate.certificateTemplateId || !program ? {} : { certificateTemplateId: program.certificateTemplateId }),
         ...(certificate.signatureUserId || !signer ? {} : { signatureUserId: signer.id, signatureImage: signer.signatureImage, signerName: signer.name, signerTitle: 'Approver' }),
       };
-      if (updated.certificateTemplateId !== certificate.certificateTemplateId || updated.signatureUserId !== certificate.signatureUserId || updated.shortId !== certificate.shortId) changed = true;
+      if (updated.verificationToken !== certificate.verificationToken || updated.verificationUrl !== certificate.verificationUrl || updated.certificateTemplateId !== certificate.certificateTemplateId || updated.signatureUserId !== certificate.signatureUserId || updated.shortId !== certificate.shortId) changed = true;
       return updated;
     });
     if (changed) write(KEYS.certificates, migrated);
@@ -185,10 +188,10 @@ export const storage = {
       const shortId = createUniqueShortId(takenShortIds);
       const token = crypto.randomUUID();
       const dynamicData = trainee.dynamicData || {};
-      return { id: number, certificateNumber: number, shortId, verificationToken: token, verificationUrl: getVerificationUrl(token), recipientName: String(dynamicData.name || dynamicData.recipient_name || trainee.recipientName), certificateTitle: String(dynamicData.certificate_title || 'Certificate of Completion'), courseName: String(dynamicData.course || dynamicData.course_name || program.name), issueDate: String(dynamicData.issue_date || dynamicData.completion_date || program.endDate || timestamp.slice(0, 10)), organization: String(dynamicData.organization || program.organization), certificateType: String(dynamicData.certificate_type || 'completion'), email: trainee.email, status: 'PENDING_APPROVAL', certificateTemplateId: template.id, dynamicData: { ...dynamicData, certificate_id: dynamicData.certificate_id || shortId, short_id: shortId }, trainingProgramId, traineeId: trainee.id, trainerIds: program.trainerIds, approverIds: program.approverIds, createdAt: timestamp };
+      return { id: number, certificateNumber: number, shortId, verificationToken: token, verificationUrl: getVerificationUrl(token), recipientName: String(dynamicData.name || dynamicData.recipient_name || trainee.recipientName), certificateTitle: String(dynamicData.certificate_title || 'Certificate of Completion'), courseName: String(dynamicData.course || dynamicData.course_name || program.name), issueDate: String(dynamicData.issue_date || dynamicData.completion_date || program.endDate || timestamp.slice(0, 10)), organization: String(dynamicData.organization || program.organization), certificateType: String(dynamicData.certificate_type || 'completion'), email: trainee.email, status: 'VALID', certificateTemplateId: template.id, dynamicData: { ...dynamicData, certificate_id: dynamicData.certificate_id || shortId, short_id: shortId }, trainingProgramId, traineeId: trainee.id, trainerIds: program.trainerIds, approverIds: program.approverIds, createdAt: timestamp };
     });
     storage.saveCertificates(certificates);
-    storage.saveApprovals(certificates.flatMap(cert => program.approverIds.map((approverId, index): CertificateApproval => ({ id: `${cert.id}-approval-${index}`, certificateId: cert.id, approverId, status: 'PENDING', createdAt: timestamp, updatedAt: timestamp }))));
+    storage.saveApprovals(certificates.flatMap(cert => program.approverIds.map((approverId, index): CertificateApproval => ({ id: `${cert.id}-approval-${index}`, certificateId: cert.id, approverId, status: 'APPROVED', approvedAt: timestamp, createdAt: timestamp, updatedAt: timestamp }))));
     return certificates;
   },
   getApprovals: (): CertificateApproval[] => read<CertificateApproval[]>(KEYS.approvals, []),

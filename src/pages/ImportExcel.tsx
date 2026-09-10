@@ -199,15 +199,22 @@ export function ImportExcel() {
       validationStatus: row.isValid ? "VALID" : "INVALID",
       validationErrors: row.errors || [],
     }));
-    storage.saveImportBatch(importBatch);
-    storage.savePendingImportTrainees(pendingRows);
-    storage.addAuditLog(
-      "Import submitted for approval",
-      "ImportBatch",
-      importBatch.id,
-    );
-    setBatch(importBatch);
-    setStep("SUBMITTED");
+    try {
+      storage.saveImportBatch(importBatch);
+      storage.savePendingImportTrainees(pendingRows);
+      storage.approveImport(importBatch.id, null);
+      setBatch(storage.getImportBatch(importBatch.id) || {
+        ...importBatch,
+        status: "APPROVED",
+      });
+      setStep("SUBMITTED");
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Unable to import certificates.",
+      );
+    }
   };
 
   if (!program)
@@ -293,7 +300,7 @@ export function ImportExcel() {
           label="Validate & preview"
         />
         <ChevronRight className="text-slate-300" />
-        <Step active={step === "SUBMITTED"} complete={false} label="Approval" />
+        <Step active={step === "SUBMITTED"} complete={false} label="Completed" />
       </div>
       {step === "UPLOAD" && (
         <div className="rounded-xl border border-slate-200 bg-white p-12 text-center shadow-sm">
@@ -464,11 +471,10 @@ export function ImportExcel() {
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-10 text-center">
           <CheckCircle2 className="mx-auto text-emerald-600" size={48} />
           <h3 className="mt-4 text-2xl font-semibold text-emerald-950">
-            Import submitted for approval
+            Import completed and auto-approved
           </h3>
           <p className="mt-2 text-emerald-800">
-            {batch.id} · {batch.validRows} valid rows are waiting for an
-            approver.
+            {batch.id} · {batch.validRows} certificates were created and issued.
           </p>
           <button
             onClick={() => navigate(`/training-programs/${program.id}`)}

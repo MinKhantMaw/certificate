@@ -285,7 +285,7 @@ export function CertificateTemplates() {
                   >
                     <Trash2 size={17} />
                   </button>
-                  <button
+                  {/* <button
                     type="button"
                     onClick={() => toggle(template)}
                     className="text-teal-700"
@@ -296,7 +296,7 @@ export function CertificateTemplates() {
                     ) : (
                       <ToggleLeft size={24} />
                     )}
-                  </button>
+                  </button> */}
                 </div>
               </div>
             </div>

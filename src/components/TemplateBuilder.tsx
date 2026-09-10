@@ -73,7 +73,8 @@ function toDataUrl(blob: Blob) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("The optimized image could not be stored."));
+    reader.onerror = () =>
+      reject(new Error("The optimized image could not be stored."));
     reader.readAsDataURL(blob);
   });
 }
@@ -88,7 +89,8 @@ async function optimizeBackground(file: File) {
   canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
   canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
   const context = canvas.getContext("2d");
-  if (!context) throw new Error("Image optimization is unavailable in this browser.");
+  if (!context)
+    throw new Error("Image optimization is unavailable in this browser.");
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
   for (const quality of [0.9, 0.8, 0.7, 0.6, 0.5]) {
@@ -126,6 +128,9 @@ export function TemplateBuilder({
   );
   const [selectedId, setSelectedId] = useState<string>();
   const [zoom, setZoom] = useState(0.52);
+  const [previewZoom, setPreviewZoom] = useState(0.7);
+  const [previewMode, setPreviewMode] = useState(false);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
   const [backgroundUploading, setBackgroundUploading] = useState(false);
   const [backgroundError, setBackgroundError] = useState("");
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -148,6 +153,11 @@ export function TemplateBuilder({
     }
   }, [selectedId, layout.elements.length]);
 
+  useEffect(() => {
+    setPreviewMode(false);
+    setSelectedId(undefined);
+  }, [template.id]);
+
   useEffect(
     () => () => {
       if (backgroundPreviewUrlRef.current)
@@ -155,6 +165,21 @@ export function TemplateBuilder({
     },
     [],
   );
+
+  useEffect(() => {
+    if (!previewMode || !previewContainerRef.current) return;
+    const container = previewContainerRef.current;
+    const updatePreviewZoom = () => {
+      const availableWidth = Math.max(280, container.clientWidth - 32);
+      setPreviewZoom(
+        Math.min(0.82, Math.max(0.34, availableWidth / layout.canvas.width)),
+      );
+    };
+    updatePreviewZoom();
+    const observer = new ResizeObserver(updatePreviewZoom);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [layout.canvas.width, previewMode]);
 
   const addElement = (type: TemplateElement["type"]) => {
     const id = `${type}-${crypto.randomUUID()}`;
@@ -313,191 +338,230 @@ export function TemplateBuilder({
   };
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[180px_minmax(500px,1fr)_260px]">
-      <aside className="space-y-3 rounded-xl border border-slate-200 bg-white p-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-          Elements
-        </p>
-        <ToolButton
-          icon={<Type size={16} />}
-          label="Text"
-          onClick={() => addElement("text")}
-        />
-        {/* <ToolButton
+    <div
+      className={
+        previewMode
+          ? "space-y-3"
+          : "grid gap-4 xl:grid-cols-[180px_minmax(0,1fr)_260px]"
+      }
+    >
+      {!previewMode && (
+        <aside className="space-y-3 rounded-xl border border-slate-200 bg-white p-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Elements
+          </p>
+          <ToolButton
+            icon={<Type size={16} />}
+            label="Text"
+            onClick={() => addElement("text")}
+          />
+          {/* <ToolButton
           icon={<ImagePlus size={16} />}
           label="Image"
           onClick={() => addElement("image")}
         /> */}
-        {/* <ToolButton
+          {/* <ToolButton
           icon={<Signature size={16} />}
           label="Signature"
           onClick={() => addElement("signature")}
         /> */}
-        {/* <ToolButton
-          icon={<QrCode size={16} />}
-          label="QR code"
-          onClick={() => addElement("qr")}
-        />
-        <ToolButton
+          <ToolButton
+            icon={<QrCode size={16} />}
+            label="QR code"
+            onClick={() => addElement("qr")}
+          />
+          {/* <ToolButton
           icon={<Square size={16} />}
           label="Shape"
           onClick={() => addElement("shape")}
         /> */}
-        <label
-          className={`flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 ${backgroundUploading ? "cursor-not-allowed bg-slate-100" : "cursor-pointer hover:bg-slate-50"}`}
-        >
-          <ImagePlus size={16} />
-          {backgroundUploading ? "Processing..." : "Background"}
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            className="hidden"
-            disabled={backgroundUploading}
-            onChange={uploadBackground}
-          />
-        </label>
-        {backgroundError && (
-          <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
-            {backgroundError}
-          </p>
-        )}
-        {layout.background && (
-          <button
-            type="button"
-            onClick={removeBackground}
-            disabled={backgroundUploading}
-            className="text-xs text-rose-700"
+          <label
+            className={`flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 ${backgroundUploading ? "cursor-not-allowed bg-slate-100" : "cursor-pointer hover:bg-slate-50"}`}
           >
-            Remove background
-          </button>
-        )}
-      </aside>
+            <ImagePlus size={16} />
+            {backgroundUploading ? "Processing..." : "Background"}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              disabled={backgroundUploading}
+              onChange={uploadBackground}
+            />
+          </label>
+          {backgroundError && (
+            <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+              {backgroundError}
+            </p>
+          )}
+          {layout.background && (
+            <button
+              type="button"
+              onClick={removeBackground}
+              disabled={backgroundUploading}
+              className="text-xs text-rose-700"
+            >
+              Remove background
+            </button>
+          )}
+        </aside>
+      )}
 
       <section className="min-w-0 rounded-xl border border-slate-200 bg-slate-100 p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <select
-              value={layout.canvas.pageSize}
-              onChange={(event) =>
-                setCanvas(
-                  event.target.value as TemplatePageSize,
-                  layout.canvas.orientation,
-                )
-              }
-              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"
-            >
-              <option value="A4">A4</option>
-              <option value="BUSINESS_CARD">Business card</option>
-              <option value="CUSTOM">Custom</option>
-            </select>
-            <select
-              value={layout.canvas.orientation}
-              onChange={(event) =>
-                setCanvas(
-                  layout.canvas.pageSize,
-                  event.target.value as TemplateOrientation,
-                )
-              }
-              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"
-            >
-              <option value="landscape">Landscape</option>
-              <option value="portrait">Portrait</option>
-            </select>
-            {layout.canvas.pageSize === "CUSTOM" && (
-              <>
-                <input
-                  aria-label="Canvas width"
-                  type="number"
-                  min="100"
-                  value={layout.canvas.width}
-                  onChange={(event) =>
-                    setCanvas(
-                      "CUSTOM",
-                      layout.canvas.orientation,
-                      Number(event.target.value),
-                      layout.canvas.height,
-                    )
-                  }
-                  className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
-                />
-                <input
-                  aria-label="Canvas height"
-                  type="number"
-                  min="100"
-                  value={layout.canvas.height}
-                  onChange={(event) =>
-                    setCanvas(
-                      "CUSTOM",
-                      layout.canvas.orientation,
-                      layout.canvas.width,
-                      Number(event.target.value),
-                    )
-                  }
-                  className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
-                />
-              </>
-            )}
-          </div>
-          <label className="text-xs text-slate-500">
-            Zoom{" "}
-            <input
-              type="range"
-              min="0.3"
-              max="0.8"
-              step="0.01"
-              value={zoom}
-              onChange={(event) => setZoom(Number(event.target.value))}
-            />
-          </label>
-        </div>
-        <div className="overflow-auto rounded-lg bg-slate-300 p-4">
-          <Stage
-            ref={stageRef}
-            width={layout.canvas.width * zoom}
-            height={layout.canvas.height * zoom}
-            scaleX={zoom}
-            scaleY={zoom}
-            onMouseDown={(event) => {
-              if (event.target === event.target.getStage())
-                setSelectedId(undefined);
+          {!previewMode && (
+            <div className="flex items-center gap-2">
+              <select
+                value={layout.canvas.pageSize}
+                onChange={(event) =>
+                  setCanvas(
+                    event.target.value as TemplatePageSize,
+                    layout.canvas.orientation,
+                  )
+                }
+                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              >
+                <option value="A4">A4</option>
+                <option value="BUSINESS_CARD">Business card</option>
+                <option value="CUSTOM">Custom</option>
+              </select>
+              <select
+                value={layout.canvas.orientation}
+                onChange={(event) =>
+                  setCanvas(
+                    layout.canvas.pageSize,
+                    event.target.value as TemplateOrientation,
+                  )
+                }
+                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              >
+                <option value="landscape">Landscape</option>
+                <option value="portrait">Portrait</option>
+              </select>
+              {layout.canvas.pageSize === "CUSTOM" && (
+                <>
+                  <input
+                    aria-label="Canvas width"
+                    type="number"
+                    min="100"
+                    value={layout.canvas.width}
+                    onChange={(event) =>
+                      setCanvas(
+                        "CUSTOM",
+                        layout.canvas.orientation,
+                        Number(event.target.value),
+                        layout.canvas.height,
+                      )
+                    }
+                    className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                  />
+                  <input
+                    aria-label="Canvas height"
+                    type="number"
+                    min="100"
+                    value={layout.canvas.height}
+                    onChange={(event) =>
+                      setCanvas(
+                        "CUSTOM",
+                        layout.canvas.orientation,
+                        layout.canvas.width,
+                        Number(event.target.value),
+                      )
+                    }
+                    className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                  />
+                </>
+              )}
+            </div>
+          )}
+          {previewMode && (
+            <p className="text-sm font-semibold text-slate-700">
+              Template preview
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedId(undefined);
+              setPreviewMode((value) => !value);
             }}
+            className="rounded-lg border border-teal-700 px-3 py-1.5 text-sm font-semibold text-teal-700 hover:bg-teal-50"
           >
-            <Layer>
-              <Rect
-                width={layout.canvas.width}
-                height={layout.canvas.height}
-                fill="white"
+            {previewMode ? "Back to editor" : "Preview"}
+          </button>
+          {!previewMode && (
+            <label className="text-xs text-slate-500">
+              Zoom{" "}
+              <input
+                type="range"
+                min="0.3"
+                max="0.8"
+                step="0.01"
+                value={zoom}
+                onChange={(event) => setZoom(Number(event.target.value))}
               />
-              {layout.background && (
-                <CanvasImage
-                  src={layout.background}
-                  x={0}
-                  y={0}
+            </label>
+          )}
+        </div>
+        <div
+          ref={previewContainerRef}
+          className={`overflow-auto rounded-lg p-4 transition-colors ${previewMode ? "flex justify-center bg-slate-200/80 p-5 sm:p-8" : "bg-slate-300"}`}
+        >
+          <div
+            className={
+              previewMode
+                ? "rounded-xl bg-white p-2 shadow-xl ring-1 ring-slate-900/10"
+                : ""
+            }
+          >
+            <Stage
+              ref={stageRef}
+              width={layout.canvas.width * (previewMode ? previewZoom : zoom)}
+              height={layout.canvas.height * (previewMode ? previewZoom : zoom)}
+              scaleX={previewMode ? previewZoom : zoom}
+              scaleY={previewMode ? previewZoom : zoom}
+              listening={!previewMode}
+              onMouseDown={(event) => {
+                if (event.target === event.target.getStage())
+                  setSelectedId(undefined);
+              }}
+            >
+              <Layer>
+                <Rect
                   width={layout.canvas.width}
                   height={layout.canvas.height}
+                  fill="white"
                 />
-              )}
-              {layout.elements.map((element) => (
-                <EditorElement
-                  key={element.id}
-                  element={element}
-                  selected={element.id === selectedId}
-                  signatures={signatures}
-                  onSelect={() => setSelectedId(element.id)}
-                  onChange={(patch) => patchSelected(patch)}
-                  onUpload={(event) => uploadFile(event, "image")}
+                {layout.background && (
+                  <CanvasImage
+                    src={layout.background}
+                    x={0}
+                    y={0}
+                    width={layout.canvas.width}
+                    height={layout.canvas.height}
+                  />
+                )}
+                {layout.elements.map((element) => (
+                  <EditorElement
+                    key={element.id}
+                    element={element}
+                    selected={element.id === selectedId}
+                    signatures={signatures}
+                    onSelect={() => setSelectedId(element.id)}
+                    onChange={(patch) => patchSelected(patch)}
+                    onUpload={(event) => uploadFile(event, "image")}
+                  />
+                ))}
+                <Transformer
+                  ref={transformerRef}
+                  rotateEnabled
+                  keepRatioEnabled
+                  boundBoxFunc={(oldBox, newBox) =>
+                    newBox.width < 20 || newBox.height < 20 ? oldBox : newBox
+                  }
                 />
-              ))}
-              <Transformer
-                ref={transformerRef}
-                rotateEnabled
-                keepRatioEnabled
-                boundBoxFunc={(oldBox, newBox) =>
-                  newBox.width < 20 || newBox.height < 20 ? oldBox : newBox
-                }
-              />
-            </Layer>
-          </Stage>
+              </Layer>
+            </Stage>
+          </div>
         </div>
       </section>
 

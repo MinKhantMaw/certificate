@@ -6,7 +6,7 @@ export type EncryptedQrStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 export function useEncryptedQr(certificate: Certificate) {
   const preview = isPreviewCertificate(certificate);
-  const cachedUrl = certificate.encryptedQrUrl || '';
+  const cachedUrl = certificate.verificationUrl || '';
   const [url, setUrl] = useState(cachedUrl);
   const [status, setStatus] = useState<EncryptedQrStatus>(
     preview ? 'idle' : cachedUrl ? 'ready' : 'loading',
