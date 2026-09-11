@@ -34,4 +34,15 @@ describe("document routes", () => {
     root = createRoot(replacement);
     await renderAt("/certificates", () => expect(window.location.pathname).toBe("/dashboard"));
   });
+
+  it("renders a template detail route", async () => {
+    await renderAt("/document-templates/template-id", () => expect(window.document.body.textContent).toContain("Template not found."));
+  });
+
+  it("renders the template creation route", async () => {
+    vi.doMock("./components/TemplateBuilder", () => ({
+      TemplateBuilder: () => <div>Canvas editor</div>,
+    }));
+    await renderAt("/document-templates/new", () => expect(window.document.body.textContent).toContain("New template"));
+  });
 });

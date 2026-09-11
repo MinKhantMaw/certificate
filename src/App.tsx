@@ -50,6 +50,16 @@ const DocumentTemplates = lazy(() =>
     default: DocumentTemplates,
   })),
 );
+const TemplateDetail = lazy(() =>
+  import("./pages/TemplateDetail").then(({ TemplateDetail }) => ({
+    default: TemplateDetail,
+  })),
+);
+const TemplateCreate = lazy(() =>
+  import("./pages/TemplateCreate").then(({ TemplateCreate }) => ({
+    default: TemplateCreate,
+  })),
+);
 const Approvals = lazy(() =>
   import("./pages/Approvals").then(({ Approvals }) => ({ default: Approvals })),
 );
@@ -96,6 +106,8 @@ export default function App() {
               path="document-templates"
               element={<DocumentTemplates />}
             />
+            <Route path="document-templates/new" element={<TemplateCreate />} />
+            <Route path="document-templates/:id" element={<TemplateDetail />} />
             <Route
               path="approvals"
               element={
