@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
+import { toPng } from "html-to-image";
 import { storage } from "../services/storage";
 import { Document, DocumentTemplate } from "../types";
 import { DocumentPreview } from "../components/DocumentPreview";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { useEncryptedQr } from "../hooks/useEncryptedQr";
 import { getTemplateKeys, getVerificationUrl, resolveTemplateValue } from "../utils";
 import {
@@ -10,11 +12,9 @@ import {
   Download,
   ShieldAlert,
   ExternalLink,
-  Printer,
   RefreshCw,
 } from "lucide-react";
 
-// Printing before the QR resolves would produce a document with an empty QR box.
 function PrintDocumentButton({
   document,
   requiresQr,
@@ -23,6 +23,8 @@ function PrintDocumentButton({
   requiresQr: boolean;
 }) {
   const { status, retry } = useEncryptedQr(document, requiresQr);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
 
   if (requiresQr && status === "error")
     return (
@@ -37,17 +39,37 @@ function PrintDocumentButton({
     );
 
   const ready = !requiresQr || status === "ready";
+  const downloadImage = async () => {
+    const node = window.document.getElementById("printable-document");
+    if (!node) return setDownloadError("The document preview is not ready.");
+    setDownloading(true);
+    setDownloadError("");
+    try {
+      const dataUrl = await toPng(node, { cacheBust: true, pixelRatio: 2 });
+      const link = window.document.createElement("a");
+      link.download = `${document.documentNumber || document.id}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch {
+      setDownloadError("Unable to download the document image.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
-    <button
-      onClick={() => window.print()}
-      disabled={!ready}
-      title={ready ? undefined : "Waiting for the verification QR code"}
-      className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:cursor-not-allowed disabled:bg-blue-300"
-    >
-      <Printer className="w-4 h-4 mr-2" />
-      {ready ? "Download PDF" : "Preparing QR..."}
-    </button>
+    <div className="flex flex-col items-end gap-1">
+      <button
+        onClick={downloadImage}
+        disabled={!ready || downloading}
+        title={ready ? undefined : "Waiting for the verification QR code"}
+        className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:cursor-not-allowed disabled:bg-blue-300"
+      >
+        <Download className="w-4 h-4 mr-2" />
+        {downloading ? "Preparing image..." : ready ? "Download Image" : "Preparing QR..."}
+      </button>
+      {downloadError && <span role="alert" className="text-xs text-red-600">{downloadError}</span>}
+    </div>
   );
 }
 
@@ -94,6 +116,7 @@ export function DocumentDetail() {
   const [cert, setCert] = useState<Document | null>(null);
   const [template, setTemplate] = useState<DocumentTemplate | null>(null);
   const [templateLoading, setTemplateLoading] = useState(false);
+  const [showRevokeModal, setShowRevokeModal] = useState(false);
   useEffect(() => {
     if (id) {
       const document = storage.getDocumentById(id) || null;
@@ -110,10 +133,14 @@ export function DocumentDetail() {
   }, [id]);
 
   const handleRevoke = () => {
-    if (cert && confirm("Are you sure you want to revoke this document?")) {
-      storage.updateDocumentStatus(cert.id, "REVOKED");
-      setCert({ ...cert, status: "REVOKED" });
-    }
+    setShowRevokeModal(true);
+  };
+
+  const confirmRevoke = () => {
+    if (!cert) return;
+    storage.updateDocumentStatus(cert.id, "REVOKED");
+    setCert({ ...cert, status: "REVOKED" });
+    setShowRevokeModal(false);
   };
 
   if (!cert) {
@@ -139,6 +166,15 @@ export function DocumentDetail() {
 
   return (
     <div className="space-y-6">
+      {showRevokeModal && (
+        <ConfirmModal
+          title="Revoke document?"
+          message="This action cannot be undone. The document will no longer be valid."
+          confirmLabel="Revoke document"
+          onConfirm={confirmRevoke}
+          onCancel={() => setShowRevokeModal(false)}
+        />
+      )}
       {/* Header Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200 print:hidden">
         <Link

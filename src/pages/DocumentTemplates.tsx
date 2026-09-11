@@ -103,8 +103,12 @@ export function DocumentTemplates() {
   };
   const remove = async (template: DocumentTemplate) => {
     if (!window.confirm(`Delete the template "${template.name}"?`)) return;
-    await storage.deleteTemplate(template.id);
-    setTemplates([...storage.getTemplates()]);
+    try {
+      await storage.deleteTemplate(template.id);
+      setTemplates([...storage.getTemplates()]);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to delete the template.");
+    }
   };
   return (
     <div className="space-y-6">
@@ -194,6 +198,11 @@ export function DocumentTemplates() {
                 : "Create template"}
           </button>
         </form>
+      )}
+      {!showForm && error && (
+        <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {error}
+        </p>
       )}
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {templates.map((template) => (

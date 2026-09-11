@@ -34,6 +34,36 @@ describe("document template CRUD", () => {
     expect(storage.getTemplates()).toEqual([]);
     expect(JSON.parse(localStorage.getItem("cms_templates") || "[]")).toEqual([]);
   });
+
+  it("protects templates referenced by documents in any status", async () => {
+    const storage = await loadStorage();
+    await storage.initTemplates();
+    await storage.saveTemplate(template());
+    const documents = storage.generateDocuments(
+      [
+        row({ recipient_name: "Valid", email: "valid@example.com" }),
+        row({ recipient_name: "Revoked", email: "revoked@example.com" }),
+        row({ recipient_name: "Pending", email: "pending@example.com" }),
+        row({ recipient_name: "Rejected", email: "rejected@example.com" }),
+      ],
+      "template-1",
+    );
+    storage.updateDocumentStatus(documents[1].id, "REVOKED");
+    storage.updateDocumentStatus(documents[2].id, "PENDING_APPROVAL");
+    storage.updateDocumentStatus(documents[3].id, "REJECTED");
+
+    await expect(storage.deleteTemplate("template-1")).rejects.toThrow(
+      "Cannot delete a template used by existing documents.",
+    );
+
+    expect(storage.getTemplates()).toHaveLength(1);
+    expect(storage.getDocuments().map((document) => document.documentTemplateId)).toEqual([
+      "template-1",
+      "template-1",
+      "template-1",
+      "template-1",
+    ]);
+  });
 });
 
 describe("direct document generation", () => {

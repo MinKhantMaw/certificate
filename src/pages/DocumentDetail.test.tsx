@@ -112,7 +112,7 @@ describe("document detail fields", () => {
     expect(window.document.body.textContent).toContain("Verification Page");
     expect(window.document.body.textContent).not.toContain("QR On");
     expect(window.document.body.textContent).not.toContain("QR Off");
-    expect(window.document.body.textContent).toContain("Download PDF");
+    expect(window.document.body.textContent).toContain("Download Image");
     expect(window.document.body.textContent).toContain("Revoke");
     expect(window.document.querySelectorAll('[data-testid="document-preview"]')).toHaveLength(1);
   });
@@ -122,7 +122,7 @@ describe("document detail fields", () => {
     await vi.waitFor(() => expect(window.document.body.textContent).toContain("Template fields are unavailable."));
 
     expect(window.document.body.textContent).toContain("Verification Page");
-    expect(window.document.body.textContent).toContain("Download PDF");
+    expect(window.document.body.textContent).toContain("Download Image");
     expect(window.document.body.textContent).toContain("Revoke");
     expect(window.document.querySelectorAll('[data-testid="document-preview"]')).toHaveLength(1);
   });

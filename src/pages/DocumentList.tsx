@@ -4,6 +4,7 @@ import { Document, DocumentTemplate, ImportBatch } from '../types';
 import { Link } from 'react-router-dom';
 import { Search, Eye, ShieldAlert, FileBadge, Filter, ArrowUpDown, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
 import { getTemplateKeys, resolveTemplateValue } from '../utils';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 type SortKey = 'status' | string;
 
@@ -48,6 +49,7 @@ export function DocumentList() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [revokeId, setRevokeId] = useState<string | null>(null);
 
   useEffect(() => {
     loadCerts();
@@ -62,10 +64,14 @@ export function DocumentList() {
   };
 
   const handleRevoke = (id: string) => {
-    if (confirm('Are you sure you want to revoke this document? This action cannot be undone.')) {
-      storage.updateDocumentStatus(id, 'REVOKED');
-      loadCerts();
-    }
+    setRevokeId(id);
+  };
+
+  const confirmRevoke = () => {
+    if (!revokeId) return;
+    storage.updateDocumentStatus(revokeId, 'REVOKED');
+    loadCerts();
+    setRevokeId(null);
   };
 
   const selectedTemplate = templates.find((template) => template.id === templateId);
@@ -128,6 +134,15 @@ export function DocumentList() {
 
   return (
     <div className="space-y-6">
+      {revokeId && (
+        <ConfirmModal
+          title="Revoke document?"
+          message="This action cannot be undone. The document will no longer be valid."
+          confirmLabel="Revoke document"
+          onConfirm={confirmRevoke}
+          onCancel={() => setRevokeId(null)}
+        />
+      )}
       <div className="flex justify-end">
         <Link to="/import" className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white">
           <Upload className="h-4 w-4" /> Upload Excel

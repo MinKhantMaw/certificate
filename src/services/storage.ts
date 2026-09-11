@@ -73,6 +73,9 @@ export const storage = {
     templatesInitialized = true;
   },
   deleteTemplate: async (id: string) => {
+    if (storage.getDocuments().some(document => document.documentTemplateId === id)) {
+      throw new Error('Cannot delete a template used by existing documents.');
+    }
     templateCache = templateCache.filter(item => item.id !== id);
     write(KEYS.templates, templateCache);
     templatesInitialized = true;

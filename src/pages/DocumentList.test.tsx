@@ -49,12 +49,14 @@ const documents: Document[] = [
   },
 ];
 
+const { updateDocumentStatus } = vi.hoisted(() => ({ updateDocumentStatus: vi.fn() }));
+
 vi.mock('../services/storage', () => ({
   storage: {
     getDocuments: () => documents,
     initTemplates: () => Promise.resolve(templates),
     getImportBatches: () => [],
-    updateDocumentStatus: vi.fn(),
+    updateDocumentStatus,
   },
 }));
 
@@ -79,6 +81,7 @@ describe('template defaults', () => {
 
 describe('DocumentList', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     const container = window.document.createElement('div');
     window.document.body.replaceChildren(container);
     root = createRoot(container);
@@ -116,5 +119,27 @@ describe('DocumentList', () => {
     await act(async () => recipientHeader.click());
     const rows = [...window.document.querySelectorAll('tbody tr')];
     expect(rows[0].textContent).toContain('Alex Smith');
+  });
+
+  it('opens a revoke confirmation modal before changing document status', async () => {
+    await vi.waitFor(() => expect(window.document.querySelector('select')?.querySelectorAll('option')).toHaveLength(3));
+    await act(async () => dispatchChange(window.document.querySelector('select') as HTMLSelectElement, 'template-a'));
+
+    await act(async () => (window.document.querySelector('button[title="Revoke"]') as HTMLButtonElement).click());
+    expect(window.document.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(window.document.body.textContent).toContain('This action cannot be undone.');
+    expect(updateDocumentStatus).not.toHaveBeenCalled();
+
+    await act(async () => (window.document.querySelector('button[aria-label="Close confirmation dialog"]') as HTMLButtonElement).click());
+    expect(window.document.querySelector('[role="dialog"]')).toBeNull();
+    expect(updateDocumentStatus).not.toHaveBeenCalled();
+
+    await act(async () => (window.document.querySelector('button[title="Revoke"]') as HTMLButtonElement).click());
+    await act(async () => {
+      [...window.document.querySelectorAll('button')]
+        .find((button) => button.textContent?.includes('Revoke document'))
+        ?.click();
+    });
+    expect(updateDocumentStatus).toHaveBeenCalledWith('DOC-1', 'REVOKED');
   });
 });
