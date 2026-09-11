@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { storage } from '../services/storage';
 import { Certificate } from '../types';
 import { Link } from 'react-router-dom';
-import { Search, Eye, ShieldAlert, FileBadge, Filter, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Eye, ShieldAlert, FileBadge, Filter, ArrowUpDown, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
 import { formatDate } from '../utils';
 
 type SortKey = 'certificate' | 'recipient' | 'course' | 'issueDate' | 'status';
@@ -87,6 +87,11 @@ export function CertificateList() {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <Link to="/import" className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white">
+          <Upload className="h-4 w-4" /> Upload Excel
+        </Link>
+      </div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
         <div className="relative flex-1 max-w-md">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

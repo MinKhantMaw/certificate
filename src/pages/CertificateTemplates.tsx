@@ -10,8 +10,8 @@ import {
 } from "lucide-react";
 import { storage } from "../services/storage";
 import { CertificateTemplate, TemplateLayout } from "../types";
-import { getTemplateKeys } from "../utils";
 import { createDefaultLayout } from "../utils/templateLayout";
+import { validateTemplate } from "../utils/templateValidation";
 
 const TemplateBuilder = lazy(() =>
   import("../components/TemplateBuilder").then(({ TemplateBuilder }) => ({
@@ -59,25 +59,8 @@ export function CertificateTemplates() {
   };
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    const keys = getTemplateKeys(layout);
-    const invalidText = layout.elements.some(
-      (element) => element.type === "text" && !element.key?.trim(),
-    );
-    const invalidSignature = layout.elements.some(
-      (element) => element.type === "signature" && !element.signatureId,
-    );
-    const duplicateIds =
-      new Set(layout.elements.map((element) => element.id)).size !==
-      layout.elements.length;
-    if (!name.trim()) return setError("Template name is required.");
-    if (invalidText)
-      return setError("Every text element needs a placeholder key.");
-    if (invalidSignature)
-      return setError("Every signature element must reference a signature.");
-    if (duplicateIds || layout.canvas.width < 100 || layout.canvas.height < 100)
-      return setError("The template layout is invalid.");
-    if (!keys.length && !layout.elements.length)
-      return setError("Add at least one element to the template.");
+    const validationError = validateTemplate(name, layout);
+    if (validationError) return setError(validationError);
     if (backgroundUploading || layout.background?.startsWith("blob:"))
       return setError("Wait for the background image upload to finish.");
     setError("");
@@ -119,16 +102,6 @@ export function CertificateTemplates() {
     setTemplates([...storage.getTemplates()]);
   };
   const remove = async (template: CertificateTemplate) => {
-    if (
-      storage
-        .getTrainings()
-        .some((program) => program.certificateTemplateId === template.id)
-    ) {
-      window.alert(
-        "This template is assigned to a training program and cannot be deleted.",
-      );
-      return;
-    }
     if (!window.confirm(`Delete the template "${template.name}"?`)) return;
     await storage.deleteTemplate(template.id);
     setTemplates([...storage.getTemplates()]);

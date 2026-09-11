@@ -17,8 +17,7 @@ export function ImportHistory() {
           Import history
         </h2>
         <p className="mt-2 text-slate-500">
-          Every roster remains tied to the training program it was submitted
-          for.
+          Review every certificate file generated from a selected template.
         </p>
       </div>
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -29,7 +28,7 @@ export function ImportHistory() {
                 {[
                   "Import ID",
                   "File",
-                  "Achievement",
+                  "Template",
                   "Rows",
                   "Status",
                   "Submitted",
@@ -68,15 +67,14 @@ export function ImportHistory() {
                       {batch.fileName}
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-600">
-                      {storage.getTraining(batch.trainingProgramId)?.name ||
-                        "Unknown"}
+                      {storage.getTemplates().find((template) => template.id === batch.templateId)?.name || "Unknown"}
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-600">
                       {batch.validRows} valid / {batch.totalRows} total
                     </td>
                     <td className="px-5 py-4">
                       <span
-                        className={`rounded-full px-2 py-1 text-xs font-semibold ${batch.status === "APPROVED" ? "bg-emerald-100 text-emerald-700" : batch.status === "REJECTED" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}
+                        className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700"
                       >
                         {batch.status.replace("_", " ")}
                       </span>

@@ -30,16 +30,11 @@ export function AdminLayout() {
   const navItems = [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     {
-      to: "/training-programs",
-      icon: ClipboardList,
-      label: "Achievements",
-    },
-    {
       to: "/certificate-templates",
       icon: Palette,
-      label: "Certificate Templates",
+      label: "Templates",
     },
-    { to: "/certificates", icon: FileBadge, label: "Certificates" },
+    { to: "/certificates", icon: FileBadge, label: "Documents" },
     { to: "/import", icon: Upload, label: "Import Excel" },
     { to: "/imports", icon: History, label: "Import History" },
     // { to: "/users", icon: Users, label: "Users" },

@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 import { storage } from '../services/storage';
-import { Certificate, ImportRecord } from '../types';
+import { Certificate, ImportBatch } from '../types';
 import { FileBadge, Upload, ShieldCheck, ShieldAlert, History, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatDate } from '../utils';
 
 export function Dashboard() {
   const [certs, setCerts] = useState<Certificate[]>([]);
-  const [imports, setImports] = useState<ImportRecord[]>([]);
+  const [imports, setImports] = useState<ImportBatch[]>([]);
 
   useEffect(() => {
     setCerts(storage.getCertificates());
-    setImports(storage.getImports());
+    setImports(storage.getImportBatches());
   }, []);
 
   const totalCerts = certs.length;
@@ -93,10 +93,10 @@ export function Dashboard() {
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="font-medium text-gray-900">{imp.fileName}</p>
-                      <p className="text-sm text-gray-500">{formatDate(imp.importDate)}</p>
+                      <p className="text-sm text-gray-500">{formatDate(imp.submittedAt || imp.createdAt)}</p>
                     </div>
                     <span className="text-sm font-medium text-gray-900">
-                      {imp.successfulRows} / {imp.totalRows} success
+                      {imp.validRows} / {imp.totalRows} generated
                     </span>
                   </div>
                 </div>
