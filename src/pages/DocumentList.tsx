@@ -1,23 +1,60 @@
 import { useState, useEffect } from 'react';
 import { storage } from '../services/storage';
-import { Document } from '../types';
+import { Document, DocumentTemplate, ImportBatch } from '../types';
 import { Link } from 'react-router-dom';
 import { Search, Eye, ShieldAlert, FileBadge, Filter, ArrowUpDown, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
-import { formatDate } from '../utils';
+import { getTemplateKeys, resolveTemplateValue } from '../utils';
 
-type SortKey = 'document' | 'recipient' | 'course' | 'issueDate' | 'status';
+type SortKey = 'status' | string;
+
+type DynamicColumn = {
+  key: string;
+  label: string;
+};
+
+export function humanizeTemplateKey(key: string): string {
+  return key
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+export function getDynamicColumns(template?: DocumentTemplate): DynamicColumn[] {
+  return getTemplateKeys(template?.layout).map((key) => ({ key, label: humanizeTemplateKey(key) }));
+}
+
+export function getDynamicValue(document: Document, key: string): string {
+  return resolveTemplateValue({ id: key, type: 'text', key, x: 0, y: 0, width: 0, height: 0, rotation: 0 }, document.dynamicData || {});
+}
+
+export function getDefaultTemplateId(templates: DocumentTemplate[], importBatches: ImportBatch[]): string {
+  const activeTemplates = templates.filter((template) => template.status === 'ACTIVE');
+  const activeTemplateIds = new Set(activeTemplates.map((template) => template.id));
+  const recentImport = [...importBatches]
+    .filter((batch) => batch.templateId && activeTemplateIds.has(batch.templateId))
+    .sort((first, second) => (second.submittedAt || second.createdAt).localeCompare(first.submittedAt || first.createdAt))[0];
+  if (recentImport?.templateId) return recentImport.templateId;
+  return [...activeTemplates]
+    .sort((first, second) => second.createdAt.localeCompare(first.createdAt))[0]?.id || '';
+}
 
 export function DocumentList() {
   const [certs, setCerts] = useState<Document[]>([]);
+  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [templateId, setTemplateId] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'VALID' | 'REVOKED'>('ALL');
-  const [sortKey, setSortKey] = useState<SortKey>('issueDate');
+  const [sortKey, setSortKey] = useState<SortKey>('status');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     loadCerts();
+    storage.initTemplates().then((loadedTemplates) => {
+      setTemplates(loadedTemplates);
+      setTemplateId((currentTemplateId) => currentTemplateId || getDefaultTemplateId(loadedTemplates, storage.getImportBatches()));
+    });
   }, []);
 
   const loadCerts = () => {
@@ -31,36 +68,40 @@ export function DocumentList() {
     }
   };
 
+  const selectedTemplate = templates.find((template) => template.id === templateId);
+  const dynamicColumns = getDynamicColumns(selectedTemplate);
+
+  const selectTemplate = (nextTemplateId: string) => {
+    setTemplateId(nextTemplateId);
+    setSearch('');
+    setStatusFilter('ALL');
+    setSortKey('status');
+    setSortDirection('desc');
+    setPage(1);
+  };
+
   const changeSort = (nextKey: SortKey) => {
     if (sortKey === nextKey) {
       setSortDirection((direction) => direction === 'asc' ? 'desc' : 'asc');
     } else {
       setSortKey(nextKey);
-      setSortDirection(nextKey === 'issueDate' ? 'desc' : 'asc');
+      setSortDirection(nextKey === 'status' ? 'desc' : 'asc');
     }
     setPage(1);
   };
 
-  const filteredCerts = certs.filter(c => {
-    const matchesSearch = c.recipientName.toLowerCase().includes(search.toLowerCase()) || 
-                          c.id.toLowerCase().includes(search.toLowerCase()) ||
-                          c.courseName.toLowerCase().includes(search.toLowerCase());
+  const templateCerts = certs.filter((document) => document.documentTemplateId === templateId);
+  const filteredCerts = templateCerts.filter(c => {
+    const searchValue = search.trim().toLowerCase();
+    const matchesSearch = !searchValue || dynamicColumns.some((column) => getDynamicValue(c, column.key).toLowerCase().includes(searchValue));
     const matchesStatus = statusFilter === 'ALL' || c.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const sortedCerts = [...filteredCerts].sort((first, second) => {
-    const values: Record<SortKey, [string, string]> = {
-      document: [first.documentNumber || first.id, second.documentNumber || second.id],
-      recipient: [first.recipientName, second.recipientName],
-      course: [first.courseName, second.courseName],
-      issueDate: [first.issueDate, second.issueDate],
-      status: [first.status, second.status],
-    };
-    const [firstValue, secondValue] = values[sortKey];
-    const comparison = sortKey === 'issueDate'
-      ? new Date(firstValue).getTime() - new Date(secondValue).getTime()
-      : firstValue.localeCompare(secondValue, undefined, { numeric: true, sensitivity: 'base' });
+    const firstValue = sortKey === 'status' ? first.status : getDynamicValue(first, sortKey);
+    const secondValue = sortKey === 'status' ? second.status : getDynamicValue(second, sortKey);
+    const comparison = firstValue.localeCompare(secondValue, undefined, { numeric: true, sensitivity: 'base' });
     return sortDirection === 'asc' ? comparison : -comparison;
   });
   const totalPages = Math.max(1, Math.ceil(sortedCerts.length / pageSize));
@@ -93,17 +134,31 @@ export function DocumentList() {
         </Link>
       </div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-        <div className="relative flex-1 max-w-md">
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+          <label className="text-sm font-medium text-gray-700 sm:min-w-64">
+            <select
+              value={templateId}
+              onChange={(event) => selectTemplate(event.target.value)}
+              className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+            >
+              <option value="">Select template</option>
+              {templates.filter((template) => template.status === 'ACTIVE').map((template) => (
+                <option key={template.id} value={template.id}>{template.name}</option>
+              ))}
+            </select>
+          </label>
+          <div className="relative flex-1 max-w-md">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-5 w-5 text-gray-400" />
           </div>
           <input
             type="text"
-            placeholder="Search by recipient, ID, or course..."
+            placeholder="Search visible document fields..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           />
+          </div>
         </div>
         
         <div className="flex items-center space-x-2">
@@ -120,15 +175,20 @@ export function DocumentList() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      {!templateId ? (
+        <div className="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center text-gray-500 shadow-sm">
+          <FileBadge className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+          <p>Select a template to view its documents.</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{sortButton('ID', 'document')}</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{sortButton('Recipient', 'recipient')}</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{sortButton('Course', 'course')}</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{sortButton('Issue Date', 'issueDate')}</th>
+                {dynamicColumns.map((column) => (
+                  <th key={column.key} className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{sortButton(column.label, column.key)}</th>
+                ))}
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{sortButton('Status', 'status')}</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
@@ -136,24 +196,17 @@ export function DocumentList() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredCerts.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={dynamicColumns.length + 2} className="px-6 py-12 text-center text-gray-500">
                     <FileBadge className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-                    <p>No documents found.</p>
+                    <p>{dynamicColumns.length ? 'No documents found for this template.' : 'This template has no dynamic fields.'}</p>
                   </td>
                 </tr>
               ) : (
                 visibleCerts.map((cert) => (
                   <tr key={cert.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      <div className="font-mono tracking-wider">{cert.shortId || cert.id}</div>
-                      <div className="text-xs text-gray-500">{cert.documentNumber}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{cert.recipientName}</div>
-                      <div className="text-sm text-gray-500">{cert.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{cert.courseName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(cert.issueDate)}</td>
+                    {dynamicColumns.map((column) => (
+                      <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getDynamicValue(cert, column.key) || '-'}</td>
+                    ))}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         cert.status === 'VALID' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
@@ -223,6 +276,7 @@ export function DocumentList() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

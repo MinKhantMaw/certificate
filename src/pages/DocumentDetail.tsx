@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { storage } from "../services/storage";
-import { Document } from "../types";
+import { Document, DocumentTemplate } from "../types";
 import { DocumentPreview } from "../components/DocumentPreview";
 import { useEncryptedQr } from "../hooks/useEncryptedQr";
-import { getVerificationUrl } from "../utils";
+import { getTemplateKeys, getVerificationUrl, resolveTemplateValue } from "../utils";
 import {
   ArrowLeft,
   Download,
@@ -53,14 +53,63 @@ function PrintDocumentButton({
   );
 }
 
+type DetailField = { key: string; label: string };
+
+export function humanizeDetailKey(key: string): string {
+  return key
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+export function getDetailFields(template?: DocumentTemplate): DetailField[] {
+  return getTemplateKeys(template?.layout).map((key) => ({
+    key,
+    label: humanizeDetailKey(key),
+  }));
+}
+
+export function getDetailData(document: Document): Record<string, string | number> {
+  return {
+    ...document.dynamicData,
+    name: document.dynamicData?.name || document.recipientName,
+    recipient_name: document.dynamicData?.recipient_name || document.recipientName,
+    email: document.dynamicData?.email || document.email,
+    course: document.dynamicData?.course || document.courseName,
+    course_name: document.dynamicData?.course_name || document.courseName,
+    issue_date: document.dynamicData?.issue_date || document.issueDate,
+    organization: document.dynamicData?.organization || document.organization,
+    document_title: document.dynamicData?.document_title || document.documentTitle,
+    document_type: document.dynamicData?.document_type || document.documentType,
+  };
+}
+
+export function getDetailValue(document: Document, key: string): string {
+  return resolveTemplateValue(
+    { id: key, type: "text", key, x: 0, y: 0, width: 0, height: 0, rotation: 0 },
+    getDetailData(document),
+  );
+}
+
 export function DocumentDetail() {
   const { id } = useParams<{ id: string }>();
   const [cert, setCert] = useState<Document | null>(null);
+  const [template, setTemplate] = useState<DocumentTemplate | null>(null);
+  const [templateLoading, setTemplateLoading] = useState(false);
   const [showQr, setShowQr] = useState(true);
 
   useEffect(() => {
     if (id) {
-      setCert(storage.getDocumentById(id) || null);
+      const document = storage.getDocumentById(id) || null;
+      setCert(document);
+      if (document?.documentTemplateId) {
+        setTemplateLoading(true);
+        storage.initTemplates().then((templates) => {
+          setTemplate(templates.find((item) => item.id === document.documentTemplateId) || null);
+        }).finally(() => setTemplateLoading(false));
+      } else {
+        setTemplate(null);
+      }
     }
   }, [id]);
 
@@ -87,6 +136,7 @@ export function DocumentDetail() {
   }
 
   const verifyUrl = getVerificationUrl(cert.verificationToken);
+  const detailFields = getDetailFields(template || undefined);
 
   return (
     <div className="space-y-6">
@@ -140,57 +190,27 @@ export function DocumentDetail() {
       </div>
 
       {/* Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:hidden">
+      <div className="print:hidden">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h3 className="font-semibold text-gray-900 mb-4 border-b pb-2">
-            Recipient Information
+            Document Information
           </h3>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Name</span>
-              <span className="font-medium">{cert.recipientName}</span>
+          {templateLoading ? (
+            <p className="text-sm text-gray-500">Loading template fields...</p>
+          ) : !template ? (
+            <p className="text-sm text-gray-500">Template fields are unavailable.</p>
+          ) : !detailFields.length ? (
+            <p className="text-sm text-gray-500">This template has no information fields.</p>
+          ) : (
+            <div className="space-y-3">
+              {detailFields.map((field) => (
+                <div key={field.key} className="flex justify-between gap-6">
+                  <span className="text-gray-500">{field.label}</span>
+                  <span className="text-right font-medium">{getDetailValue(cert, field.key) || "-"}</span>
+                </div>
+              ))}
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Email</span>
-              <span className="font-medium">{cert.email}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Course</span>
-              <span className="font-medium">{cert.courseName}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="font-semibold text-gray-900 mb-4 border-b pb-2">
-            System Information
-          </h3>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Status</span>
-              <span
-                className={`font-medium ${cert.status === "VALID" ? "text-green-600" : "text-red-600"}`}
-              >
-                {cert.status}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Document ID</span>
-              <span className="font-mono font-medium tracking-wider">
-                {cert.shortId || cert.id}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Document Number</span>
-              <span className="font-medium">{cert.documentNumber}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Token</span>
-              <span className="font-mono text-xs text-gray-600 break-all max-w-[200px] text-right">
-                {cert.verificationToken}
-              </span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
