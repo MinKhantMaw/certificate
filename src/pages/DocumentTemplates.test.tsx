@@ -5,12 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const { templates, storageMock } = vi.hoisted(() => {
+const { downloadSampleImportWorkbookMock, templates, storageMock } = vi.hoisted(() => {
   const templates = [
     { id: "used", name: "Used template", description: "", design: "konva", status: "ACTIVE", createdBy: "admin", createdAt: "", updatedAt: "" },
     { id: "unused", name: "Unused template", description: "", design: "konva", status: "ACTIVE", createdBy: "admin", createdAt: "", updatedAt: "" },
   ];
   return {
+    downloadSampleImportWorkbookMock: vi.fn(),
     templates,
     storageMock: {
       getTemplates: vi.fn(() => templates),
@@ -26,6 +27,9 @@ const { templates, storageMock } = vi.hoisted(() => {
 });
 
 vi.mock("../services/storage", () => ({ storage: storageMock }));
+vi.mock("../utils/sampleImportWorkbook", () => ({
+  downloadSampleImportWorkbook: downloadSampleImportWorkbookMock,
+}));
 
 import { DocumentTemplates } from "./DocumentTemplates";
 
@@ -73,5 +77,15 @@ describe("DocumentTemplates", () => {
 
     expect(window.document.body.textContent).not.toContain("Unused template");
     expect(window.document.body.textContent).toContain("Used template");
+  });
+
+  it("downloads a sample Excel file for the selected template", async () => {
+    await vi.waitFor(() => expect(window.document.body.textContent).toContain("Used template"));
+
+    await act(async () => {
+      (window.document.querySelector('[aria-label="Download sample Excel for Used template"]') as HTMLButtonElement).click();
+    });
+
+    expect(downloadSampleImportWorkbookMock).toHaveBeenCalledWith("Used template", undefined);
   });
 });

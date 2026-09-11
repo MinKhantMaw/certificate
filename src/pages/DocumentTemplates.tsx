@@ -1,5 +1,6 @@
 import { FormEvent, lazy, Suspense, useEffect, useState } from "react";
 import {
+  Download,
   Edit3,
   Palette,
   Plus,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 import { storage } from "../services/storage";
 import { DocumentTemplate, TemplateLayout } from "../types";
+import { downloadSampleImportWorkbook } from "../utils/sampleImportWorkbook";
 import { createDefaultLayout } from "../utils/templateLayout";
 import { validateTemplate } from "../utils/templateValidation";
 
@@ -249,6 +251,15 @@ export function DocumentTemplates() {
               <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-sm">
                 <span className="text-slate-400">Dynamic fields supported</span>
                 <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => downloadSampleImportWorkbook(template.name, template.layout)}
+                    className="text-slate-500"
+                    aria-label={`Download sample Excel for ${template.name}`}
+                    title="Download sample Excel"
+                  >
+                    <Download size={17} />
+                  </button>
                   <button
                     type="button"
                     onClick={() => openEdit(template)}

@@ -6,7 +6,6 @@ export const MAX_IMPORT_ROWS = 5000;
 export function parseImportedRow(
   row: Record<string, unknown>,
   templateKeys: string[],
-  seen: Set<string>,
 ): ImportedRow {
   const value = (key: string) => String(
     row[key] ?? row[key.replaceAll("_", " ")] ??
@@ -14,14 +13,8 @@ export function parseImportedRow(
   ).trim();
   const name = value("recipient_name");
   const email = value("email");
-  const errors = ["recipient_name", "email"]
-    .filter((key) => !value(key))
-    .map((key) => `Missing ${key}`);
+  const errors: string[] = [];
   templateKeys.filter((key) => !value(key)).forEach((key) => errors.push(`Missing template field ${key}`));
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("Invalid email");
-  const duplicate = `${email.toLowerCase()}|${name.toLowerCase()}`;
-  if (seen.has(duplicate)) errors.push("Duplicate recipient");
-  seen.add(duplicate);
   const dynamicData = Object.fromEntries(Object.entries(row).map(([key, item]) => [
     key.trim().toLowerCase(), typeof item === "number" ? item : String(item ?? "").trim(),
   ])) as Record<string, string | number>;
