@@ -28,14 +28,14 @@ export function Dashboard() {
       <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <Link 
           to="/import" 
-          className="flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm"
+          className="flex items-center justify-center bg-[#0054a6] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#003f82] transition-colors shadow-sm"
         >
           <Upload className="w-4 h-4 mr-2" />
           Import Excel
         </Link>
         <Link 
           to="/documents" 
-          className="flex items-center justify-center bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors shadow-sm"
+            className="flex items-center justify-center bg-white border border-[#b9cbe0] text-[#002c76] px-4 py-2 rounded-lg font-medium hover:bg-[#f4f7fb] transition-colors shadow-sm"
         >
           <FileBadge className="w-4 h-4 mr-2" />
           View Documents
@@ -55,7 +55,7 @@ export function Dashboard() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h3 className="font-semibold text-gray-900">Recent Documents</h3>
-            <Link to="/documents" className="text-sm text-blue-600 hover:text-blue-800 font-medium">View all</Link>
+            <Link to="/documents" className="text-sm text-[#0054a6] hover:text-[#003f82] font-medium">View all</Link>
           </div>
           <div className="divide-y divide-gray-100">
             {recentCerts.length === 0 ? (
@@ -82,7 +82,7 @@ export function Dashboard() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h3 className="font-semibold text-gray-900">Recent Imports</h3>
-            <Link to="/imports" className="text-sm text-blue-600 hover:text-blue-800 font-medium">View all</Link>
+            <Link to="/imports" className="text-sm text-[#0054a6] hover:text-[#003f82] font-medium">View all</Link>
           </div>
           <div className="divide-y divide-gray-100">
             {recentImports.length === 0 ? (
@@ -111,10 +111,10 @@ export function Dashboard() {
 
 function StatCard({ title, value, icon: Icon, color }: { title: string, value: number | string, icon: any, color: string }) {
   const colorMap: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-600',
+    blue: 'bg-[#e9f1fb] text-[#0054a6]',
     green: 'bg-green-50 text-green-600',
     red: 'bg-red-50 text-red-600',
-    purple: 'bg-purple-50 text-purple-600',
+    purple: 'bg-[#e9f1fb] text-[#0054a6]',
   };
 
   return (

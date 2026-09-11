@@ -61,12 +61,14 @@ export function AdminLayout() {
     "Dashboard";
 
   return (
-    <div className="flex min-h-screen bg-gray-50 font-sans text-gray-900">
+    <div className="flex min-h-screen bg-[#f4f7fb] font-sans text-gray-900">
       {/* Sidebar */}
-      <aside className="hidden w-64 shrink-0 border-r border-gray-200 bg-white md:flex md:flex-col">
-        <div className="h-16 flex items-center px-6 border-b border-gray-200">
-          <FileBadge className="w-6 h-6 text-blue-600 mr-2" />
-          <span className="font-bold text-lg tracking-tight">Certifly</span>
+      <aside className="hidden w-64 shrink-0 border-r border-[#d9e3f0] bg-[#002c76] text-white md:flex md:flex-col">
+        <div className="h-16 flex items-center px-6 border-b border-white/15">
+          <span className="mr-2 flex h-8 w-8 items-center justify-center rounded-lg bg-[#e11e26] text-white">
+            <FileBadge className="w-5 h-5" />
+          </span>
+          <span className="font-bold text-lg tracking-tight">Kanva</span>
         </div>
         <div className="flex-1 overflow-y-auto py-4">
           <nav className="space-y-1 px-3">
@@ -77,8 +79,8 @@ export function AdminLayout() {
                 className={({ isActive }) =>
                   `flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                     isActive
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-gray-700 hover:bg-gray-100"
+                      ? "bg-white text-[#002c76]"
+                      : "text-blue-100 hover:bg-white/10 hover:text-white"
                   }`
                 }
               >
@@ -93,13 +95,13 @@ export function AdminLayout() {
       {/* Main Content */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 lg:px-8">
+        <header className="h-16 bg-white border-b border-[#d9e3f0] flex items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center">
             <button
               onClick={() => setMobileMenuOpen((open) => !open)}
               aria-label="Toggle navigation menu"
               aria-expanded={mobileMenuOpen}
-              className="-ml-2 p-2 text-gray-400 hover:text-gray-500 md:hidden"
+                 className="-ml-2 p-2 text-[#0054a6] hover:text-[#003f82] md:hidden"
             >
               <Menu className="w-6 h-6" />
             </button>
@@ -109,7 +111,7 @@ export function AdminLayout() {
           </div>
           <div className="flex items-center space-x-4">
             <div className="hidden sm:flex items-center text-sm">
-              <div className="w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold mr-2">
+              <div className="w-8 h-8 bg-[#e11e26] text-white rounded-full flex items-center justify-center font-bold mr-2">
                 {user?.name.charAt(0)}
               </div>
               <div className="flex flex-col">
@@ -119,7 +121,7 @@ export function AdminLayout() {
             </div>
             <button
               onClick={handleLogout}
-              className="p-2 text-gray-400 hover:text-red-600 transition-colors rounded-full hover:bg-red-50"
+              className="p-2 text-gray-400 hover:text-[#0054a6] transition-colors rounded-full hover:bg-[#e9f1fb]"
               title="Logout"
             >
               <LogOut className="w-5 h-5" />
@@ -129,7 +131,7 @@ export function AdminLayout() {
 
         {/* Main scrollable area */}
         {mobileMenuOpen && (
-          <div className="border-b border-gray-200 bg-white p-3 md:hidden">
+          <div className="border-b border-[#d9e3f0] bg-[#002c76] p-3 md:hidden">
             <nav className="space-y-1">
               {navItems.map((item) => (
                 <NavLink
@@ -139,8 +141,8 @@ export function AdminLayout() {
                   className={({ isActive }) =>
                     `flex items-center rounded-md px-3 py-2 text-sm font-medium ${
                       isActive
-                        ? "bg-blue-50 text-blue-700"
-                        : "text-gray-700 hover:bg-gray-100"
+                        ? "bg-white text-[#002c76]"
+                        : "text-blue-100 hover:bg-white/10 hover:text-white"
                     }`
                   }
                 >

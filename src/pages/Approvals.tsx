@@ -139,7 +139,7 @@ export function Approvals() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => act(approval.id, "APPROVED")}
-                          className="inline-flex items-center gap-1 rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white"
+                          className="inline-flex items-center gap-1 rounded-md bg-[#0054a6] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#003f82]"
                         >
                           <Check size={14} /> Approve
                         </button>

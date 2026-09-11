@@ -172,7 +172,7 @@ export function DocumentList() {
       )}
       {actionError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</p>}
       <div className="flex justify-end">
-        <Link to="/import" className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white">
+        <Link to="/import" className="inline-flex items-center gap-2 rounded-lg bg-[#0054a6] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#003f82]">
           <Upload className="h-4 w-4" /> Upload
         </Link>
       </div>
@@ -259,7 +259,7 @@ export function DocumentList() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-3">
-                        <Link to={`/documents/${cert.id}`} className="text-blue-600 hover:text-blue-900 flex items-center" title="View Detail">
+                        <Link to={`/documents/${cert.id}`} className="text-[#0054a6] hover:text-[#003f82] flex items-center" title="View Detail">
                           <Eye className="w-4 h-4 mr-1" /> View
                         </Link>
                         {cert.status === 'VALID' && (

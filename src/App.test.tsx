@@ -25,6 +25,42 @@ async function renderAt(path: string, assertion: () => void) {
 }
 
 describe("document routes", () => {
+  it("renders the public landing page without authentication", async () => {
+    localStorage.removeItem("cms_auth");
+
+    await renderAt("/", () =>
+      expect(window.document.body.textContent).toContain(
+        "Design once,  use indefinitely",
+      ),
+    );
+
+    expect(window.document.body.textContent).toContain("Reusable templates");
+    expect(window.document.body.textContent).toContain(
+      "Spreadsheet generation",
+    );
+    expect(window.document.body.textContent).toContain(
+      "Approval and signatures",
+    );
+    expect(window.document.body.textContent).toContain("Instant verification");
+    expect(window.document.querySelector('a[href="/login"]')).not.toBeNull();
+  });
+
+  it("keeps verification public and protects the admin dashboard", async () => {
+    localStorage.removeItem("cms_auth");
+
+    await renderAt("/verify/example-document", () =>
+      expect(window.document.body.textContent).toContain("Document Not Found"),
+    );
+
+    root.unmount();
+    const replacement = window.document.createElement("div");
+    window.document.body.replaceChildren(replacement);
+    root = createRoot(replacement);
+    await renderAt("/dashboard", () =>
+      expect(window.location.pathname).toBe("/login"),
+    );
+  });
+
   it("renders the document list and rejects the retired certificate path", async () => {
     await renderAt("/documents", () => expect(window.document.body.textContent).toContain("Documents"));
 

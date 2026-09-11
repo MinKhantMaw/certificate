@@ -25,7 +25,7 @@ export function ImportHistory() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-600">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0054a6]">
           Data intake
         </p>
         <h2 className="mt-2 text-3xl font-semibold text-slate-950">

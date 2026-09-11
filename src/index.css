@@ -8,3 +8,13 @@
 body {
 	font-family: "Poppins", sans-serif;
 }
+
+@layer utilities {
+	.bg-teal-700 {
+		background-color: #0054a6;
+	}
+
+	.bg-teal-700:hover {
+		background-color: #003f82;
+	}
+}

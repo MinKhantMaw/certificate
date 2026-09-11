@@ -46,7 +46,7 @@ export function TemplateCreate() {
         Back to Templates
       </Link>
       <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-600">Design library</p>
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0054a6]">Design library</p>
         <h2 className="mt-2 text-3xl font-semibold text-slate-950">New template</h2>
       </div>
       <form onSubmit={save} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -68,7 +68,7 @@ export function TemplateCreate() {
           />
         </Suspense>
         {error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-        <button disabled={backgroundUploading} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
+        <button disabled={backgroundUploading} className="rounded-lg bg-[#0054a6] px-4 py-2 text-sm font-semibold text-white hover:bg-[#003f82] disabled:cursor-not-allowed disabled:opacity-60">
           {backgroundUploading ? "Uploading background..." : "Create template"}
         </button>
       </form>

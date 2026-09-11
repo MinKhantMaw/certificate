@@ -22,7 +22,7 @@ export function DocumentTemplates() {
     <div className="space-y-6">
       <div className="flex items-end justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-600">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0054a6]">
             Design library
           </p>
           <h2 className="mt-2 text-3xl font-semibold text-slate-950">
@@ -34,7 +34,7 @@ export function DocumentTemplates() {
         </div>
         <Link
           to="/document-templates/new"
-          className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white"
+          className="inline-flex items-center gap-2 rounded-lg bg-[#0054a6] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#003f82]"
         >
           <Plus size={17} />
           New template
@@ -71,7 +71,7 @@ export function DocumentTemplates() {
                 <div className="flex items-center gap-3">
                   <Link
                     to={`/document-templates/${template.id}`}
-                    className="text-sm font-medium text-teal-700 hover:text-teal-900"
+                    className="text-sm font-medium text-[#0054a6] hover:text-[#003f82]"
                   >
                     View details
                   </Link>

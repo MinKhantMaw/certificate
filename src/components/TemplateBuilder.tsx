@@ -484,7 +484,7 @@ export function TemplateBuilder({
               setSelectedId(undefined);
               setPreviewMode((value) => !value);
             }}
-            className="rounded-lg border border-teal-700 px-3 py-1.5 text-sm font-semibold text-teal-700 hover:bg-teal-50"
+            className="rounded-lg border border-[#0054a6] px-3 py-1.5 text-sm font-semibold text-[#0054a6] hover:bg-[#e9f1fb]"
           >
             {previewMode ? "Back to editor" : "Preview"}
           </button>
@@ -601,7 +601,7 @@ function ToolButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-left text-sm text-slate-700 hover:border-teal-400 hover:bg-teal-50"
+      className="flex w-full items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-left text-sm text-slate-700 hover:border-[#0054a6] hover:bg-[#e9f1fb]"
     >
       {icon}
       {label}

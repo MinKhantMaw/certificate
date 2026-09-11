@@ -68,6 +68,9 @@ const SignatureProfile = lazy(() =>
     default: SignatureProfile,
   })),
 );
+const Landing = lazy(() =>
+  import("./pages/Landing").then(({ Landing }) => ({ default: Landing })),
+);
 
 export default function App() {
   useEffect(() => {
@@ -90,17 +93,16 @@ export default function App() {
             path="/verify/:verificationToken"
             element={<VerifyDocument />}
           />
+          <Route path="/" element={<Landing />} />
 
           {/* Protected Admin Routes */}
           <Route
-            path="/"
             element={
               <ProtectedRoute>
                 <AdminLayout />
               </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route
               path="document-templates"

@@ -34,7 +34,7 @@ export function SignatureProfile() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-600">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0054a6]">
           Identity & signing
         </p>
         <h2 className="mt-2 text-3xl font-semibold text-slate-950">
@@ -47,7 +47,7 @@ export function SignatureProfile() {
       </div>
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-4 border-b border-slate-100 pb-5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-100 text-teal-700">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#e9f1fb] text-[#0054a6]">
             <UserRound />
           </div>
           <div>
