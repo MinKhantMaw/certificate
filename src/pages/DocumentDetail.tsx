@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { toPng } from "html-to-image";
 import { storage } from "../services/storage";
 import { Document, DocumentTemplate } from "../types";
@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   Download,
   ShieldAlert,
+  Trash2,
   ExternalLink,
   RefreshCw,
 } from "lucide-react";
@@ -113,10 +114,13 @@ export function getDetailValue(document: Document, key: string): string {
 
 export function DocumentDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [cert, setCert] = useState<Document | null>(null);
   const [template, setTemplate] = useState<DocumentTemplate | null>(null);
   const [templateLoading, setTemplateLoading] = useState(false);
   const [showRevokeModal, setShowRevokeModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [actionError, setActionError] = useState("");
   useEffect(() => {
     if (id) {
       const document = storage.getDocumentById(id) || null;
@@ -138,9 +142,24 @@ export function DocumentDetail() {
 
   const confirmRevoke = () => {
     if (!cert) return;
-    storage.updateDocumentStatus(cert.id, "REVOKED");
-    setCert({ ...cert, status: "REVOKED" });
-    setShowRevokeModal(false);
+    try {
+      storage.updateDocumentStatus(cert.id, "REVOKED");
+      setCert({ ...cert, status: "REVOKED" });
+      setShowRevokeModal(false);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unable to revoke the document.");
+    }
+  };
+
+  const confirmDelete = () => {
+    if (!cert) return;
+    try {
+      storage.deleteDocument(cert.id);
+      navigate("/documents");
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unable to delete the document.");
+      setShowDeleteModal(false);
+    }
   };
 
   if (!cert) {
@@ -175,6 +194,16 @@ export function DocumentDetail() {
           onCancel={() => setShowRevokeModal(false)}
         />
       )}
+      {showDeleteModal && (
+        <ConfirmModal
+          title="Delete document?"
+          message="This action cannot be undone. The document and its approval records will be removed."
+          confirmLabel="Delete document"
+          onConfirm={confirmDelete}
+          onCancel={() => setShowDeleteModal(false)}
+        />
+      )}
+      {actionError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 print:hidden">{actionError}</p>}
       {/* Header Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200 print:hidden">
         <Link
@@ -189,7 +218,7 @@ export function DocumentDetail() {
             href={verifyUrl}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium bg-white"
+            className="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium bg-white"
           >
             <ExternalLink className="w-4 h-4 mr-2" />
             Verification Page
@@ -204,6 +233,14 @@ export function DocumentDetail() {
               Revoke
             </button>
           )}
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="flex items-center px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 font-medium bg-white"
+            title="Delete"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete
+          </button>
         </div>
       </div>
 

@@ -27,6 +27,15 @@ async function renderVerification(token: string) {
   await vi.waitFor(() => expect(window.document.body.textContent).toContain("Document Verified"));
 }
 
+async function renderMissingVerification(token: string) {
+  root.render(
+    <MemoryRouter initialEntries={[`/verify/${token}`]}>
+      <Routes><Route path="/verify/:verificationToken" element={<VerifyDocument />} /></Routes>
+    </MemoryRouter>,
+  );
+  await vi.waitFor(() => expect(window.document.body.textContent).toContain("Document Not Found"));
+}
+
 describe("document verification", () => {
   it("renders a locally stored document as verified", async () => {
     localStorage.setItem("cms_documents", JSON.stringify([{
@@ -48,5 +57,17 @@ describe("document verification", () => {
     await renderVerification("api-token");
     expect(window.document.body.textContent).toContain("Document Verified");
     expect(window.document.body.textContent).toContain("API User");
+  });
+
+  it("does not fall back to the API for a locally deleted document", async () => {
+    localStorage.setItem("cms_deleted_document_tokens", JSON.stringify(["deleted-token"]));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({
+      id: "DOC-API", verificationToken: "deleted-token", recipientName: "Deleted User", status: "VALID",
+    }) }));
+
+    await renderMissingVerification("deleted-token");
+
+    expect(window.document.body.textContent).not.toContain("Deleted User");
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

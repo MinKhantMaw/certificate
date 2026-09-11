@@ -17,6 +17,10 @@ export function VerifyDocument() {
       : "";
 
     const verifyDocument = async () => {
+      if (storage.isDocumentDeleted(decodedToken)) {
+        setCert(null);
+        return;
+      }
       const localDocument = storage.getDocumentByToken(decodedToken);
       if (localDocument) {
         setCert(localDocument);

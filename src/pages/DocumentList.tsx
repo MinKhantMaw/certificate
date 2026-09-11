@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { storage } from '../services/storage';
 import { Document, DocumentTemplate, ImportBatch } from '../types';
 import { Link } from 'react-router-dom';
-import { Search, Eye, ShieldAlert, FileBadge, Filter, ArrowUpDown, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
+import { Search, Eye, ShieldAlert, Trash2, FileBadge, Filter, ArrowUpDown, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
 import { getTemplateKeys, resolveTemplateValue } from '../utils';
 import { ConfirmModal } from '../components/ConfirmModal';
 
@@ -50,6 +50,8 @@ export function DocumentList() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [revokeId, setRevokeId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState('');
 
   useEffect(() => {
     loadCerts();
@@ -69,9 +71,25 @@ export function DocumentList() {
 
   const confirmRevoke = () => {
     if (!revokeId) return;
-    storage.updateDocumentStatus(revokeId, 'REVOKED');
-    loadCerts();
-    setRevokeId(null);
+    try {
+      storage.updateDocumentStatus(revokeId, 'REVOKED');
+      loadCerts();
+      setRevokeId(null);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to revoke the document.');
+    }
+  };
+
+  const confirmDelete = () => {
+    if (!deleteId) return;
+    try {
+      storage.deleteDocument(deleteId);
+      loadCerts();
+      setDeleteId(null);
+      setActionError('');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to delete the document.');
+    }
   };
 
   const selectedTemplate = templates.find((template) => template.id === templateId);
@@ -143,9 +161,19 @@ export function DocumentList() {
           onCancel={() => setRevokeId(null)}
         />
       )}
+      {deleteId && (
+        <ConfirmModal
+          title="Delete document?"
+          message="This action cannot be undone. The document and its approval records will be removed."
+          confirmLabel="Delete document"
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteId(null)}
+        />
+      )}
+      {actionError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</p>}
       <div className="flex justify-end">
         <Link to="/import" className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white">
-          <Upload className="h-4 w-4" /> Upload Excel
+          <Upload className="h-4 w-4" /> Upload
         </Link>
       </div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
@@ -242,6 +270,13 @@ export function DocumentList() {
                             <ShieldAlert className="w-4 h-4 mr-1" /> Revoke
                           </button>
                         )}
+                        <button
+                          onClick={() => setDeleteId(cert.id)}
+                          className="text-red-600 hover:text-red-900 flex items-center"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" /> Delete
+                        </button>
                       </div>
                     </td>
                   </tr>

@@ -49,7 +49,7 @@ const documents: Document[] = [
   },
 ];
 
-const { updateDocumentStatus } = vi.hoisted(() => ({ updateDocumentStatus: vi.fn() }));
+const { updateDocumentStatus, deleteDocument } = vi.hoisted(() => ({ updateDocumentStatus: vi.fn(), deleteDocument: vi.fn() }));
 
 vi.mock('../services/storage', () => ({
   storage: {
@@ -57,6 +57,7 @@ vi.mock('../services/storage', () => ({
     initTemplates: () => Promise.resolve(templates),
     getImportBatches: () => [],
     updateDocumentStatus,
+    deleteDocument,
   },
 }));
 
@@ -141,5 +142,28 @@ describe('DocumentList', () => {
         ?.click();
     });
     expect(updateDocumentStatus).toHaveBeenCalledWith('DOC-1', 'REVOKED');
+  });
+
+  it('confirms document deletion before removing a row and reports failures', async () => {
+    await vi.waitFor(() => expect(window.document.querySelector('select')?.querySelectorAll('option')).toHaveLength(3));
+    await act(async () => dispatchChange(window.document.querySelector('select') as HTMLSelectElement, 'template-a'));
+
+    await act(async () => (window.document.querySelector('button[title="Delete"]') as HTMLButtonElement).click());
+    expect(window.document.querySelector('[role="dialog"]')).not.toBeNull();
+    await act(async () => (window.document.querySelector('button[aria-label="Close confirmation dialog"]') as HTMLButtonElement).click());
+    expect(deleteDocument).not.toHaveBeenCalled();
+
+    await act(async () => (window.document.querySelector('button[title="Delete"]') as HTMLButtonElement).click());
+    await act(async () => [...window.document.querySelectorAll('button')]
+      .find((button) => button.textContent?.includes('Delete document'))
+      ?.click());
+    expect(deleteDocument).toHaveBeenCalledWith('DOC-1');
+
+    deleteDocument.mockImplementationOnce(() => { throw new Error('Delete failed.'); });
+    await act(async () => (window.document.querySelector('button[title="Delete"]') as HTMLButtonElement).click());
+    await act(async () => [...window.document.querySelectorAll('button')]
+      .find((button) => button.textContent?.includes('Delete document'))
+      ?.click());
+    expect(window.document.body.textContent).toContain('Delete failed.');
   });
 });

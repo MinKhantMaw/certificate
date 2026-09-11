@@ -51,26 +51,6 @@ export function DocumentTemplates() {
             key={template.id}
             className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
           >
-            <div className="relative flex aspect-[1.45] items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-teal-900 to-amber-200 p-5">
-              {template.previewImage && (
-                <img
-                  src={template.previewImage}
-                  alt=""
-                  aria-hidden="true"
-                  className="absolute inset-0 h-full w-full object-cover opacity-30"
-                />
-              )}
-              <div className="flex h-full w-full flex-col items-center justify-center border border-white/50 text-center text-white">
-                <Palette size={20} />
-                <p className="mt-3 text-xs uppercase tracking-[0.25em]">
-                  Document
-                </p>
-                <p className="mt-1 font-serif text-2xl">{template.name}</p>
-                <p className="mt-2 text-xs text-white/70">
-                  {"{{organizationName}}"} · {"{{recipientName}}"}
-                </p>
-              </div>
-            </div>
             <div className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>

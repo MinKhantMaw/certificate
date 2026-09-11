@@ -99,4 +99,27 @@ describe("direct document generation", () => {
     expect(localStorage.getItem("cms_certificates")).toBeNull();
     expect(storage.getDocuments()[0]).toMatchObject({ documentNumber: "CERT-legacy", documentTitle: "Certificate of Completion", documentTemplateId: "template-1" });
   });
+
+  it("deletes a document, its approvals, and records a verification tombstone", async () => {
+    const storage = await loadStorage();
+    await storage.initTemplates();
+    await storage.saveTemplate(template());
+    const [document] = storage.generateDocuments([row()], "template-1");
+    storage.saveApprovals([{ id: "approval-1", documentId: document.id, approverId: "approver", status: "PENDING", createdAt: "", updatedAt: "" }]);
+    storage.deleteDocument(document.id);
+
+    expect(storage.getDocumentById(document.id)).toBeUndefined();
+    expect(storage.getApprovalsForDocument(document.id)).toEqual([]);
+    expect(storage.isDocumentDeleted(document.verificationToken)).toBe(true);
+    expect(storage.getAuditLogs()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ action: "Document deleted", entityType: "Document", entityId: document.id }),
+    ]));
+  });
+
+  it("rejects deletion for an unknown document without changing storage", async () => {
+    const storage = await loadStorage();
+    await expect(Promise.resolve().then(() => storage.deleteDocument("missing"))).rejects.toThrow("Document not found.");
+    expect(storage.getDocuments()).toEqual([]);
+    expect(storage.getAuditLogs()).toEqual([]);
+  });
 });

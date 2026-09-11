@@ -18,6 +18,7 @@ const write = <T>(key: string, value: T) => localStorage.setItem(key, JSON.strin
 const now = () => new Date().toISOString();
 
 const LEGACY_DOCUMENTS_KEY = "cms_certificates";
+const DELETED_DOCUMENT_TOKENS_KEY = 'cms_deleted_document_tokens';
 
 function migrateLegacyDocuments() {
   if (localStorage.getItem(KEYS.documents)) {
@@ -144,9 +145,22 @@ export const storage = {
   },
   getDocumentById: (id: string) => storage.getDocuments().find(item => item.id === id || item.documentNumber === id || item.shortId === id),
   getDocumentByToken: (token: string) => storage.getDocuments().find(item => item.verificationToken === decodeURIComponent(token).trim()),
+  isDocumentDeleted: (token: string) => read<string[]>(DELETED_DOCUMENT_TOKENS_KEY, []).includes(decodeURIComponent(token).trim()),
   saveDocuments: (documents: Document[]) => write(KEYS.documents, [...storage.getDocuments(), ...documents]),
   updateDocument: (document: Document) => write(KEYS.documents, storage.getDocuments().map(item => item.id === document.id ? document : item)),
   updateDocumentStatus: (id: string, status: Document['status']) => write(KEYS.documents, storage.getDocuments().map(item => item.id === id ? { ...item, status } : item)),
+  deleteDocument: (id: string) => {
+    const documents = storage.getDocuments();
+    const document = documents.find(item => item.id === id || item.documentNumber === id || item.shortId === id);
+    if (!document) throw new Error('Document not found.');
+    write(KEYS.documents, documents.filter(item => item.id !== document.id));
+    write(KEYS.approvals, storage.getApprovals().filter(approval => approval.documentId !== document.id));
+    const deletedTokens = read<string[]>(DELETED_DOCUMENT_TOKENS_KEY, []);
+    if (!deletedTokens.includes(document.verificationToken)) {
+      write(DELETED_DOCUMENT_TOKENS_KEY, [...deletedTokens, document.verificationToken]);
+    }
+    storage.addAuditLog('Document deleted', 'Document', document.id);
+  },
   getNextDocumentIndex: () => storage.getDocuments().length + 1,
   getApprovals: (): DocumentApproval[] => {
     const approvals = read<Array<DocumentApproval & { certificateId?: string }>>(KEYS.approvals, []);

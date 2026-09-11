@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { createElement } from "react";
+import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -52,11 +52,14 @@ const missingTemplateDocument = { ...document, id: "DOC-MISSING", documentTempla
 const noFieldsTemplate = { ...template, id: "template-empty", layout: { ...template.layout, elements: [] } };
 const noFieldsDocument = { ...document, id: "DOC-EMPTY", documentTemplateId: "template-empty" };
 
+const { deleteDocument } = vi.hoisted(() => ({ deleteDocument: vi.fn() }));
+
 vi.mock("../services/storage", () => ({
   storage: {
     getDocumentById: (id: string) => id === "DOC-MISSING" ? missingTemplateDocument : id === "DOC-EMPTY" ? noFieldsDocument : document,
     initTemplates: () => Promise.resolve([template, noFieldsTemplate]),
     updateDocumentStatus: vi.fn(),
+    deleteDocument,
   },
 }));
 
@@ -79,12 +82,14 @@ function renderDetail(id: string) {
       { initialEntries: [`/documents/${id}`] },
       createElement(Routes, null,
         createElement(Route, { path: "/documents/:id", element: createElement(DocumentDetail) }),
+        createElement(Route, { path: "/documents", element: createElement("div", null, "Document List") }),
       ),
     ),
   );
 }
 
 beforeEach(() => {
+  deleteDocument.mockReset();
   const container = window.document.createElement("div");
   window.document.body.replaceChildren(container);
   root = createRoot(container);
@@ -133,5 +138,36 @@ describe("document detail fields", () => {
 
     expect(window.document.body.textContent).toContain("Verification Page");
     expect(window.document.querySelectorAll('[data-testid="document-preview"]')).toHaveLength(1);
+  });
+
+  it("confirms deletion and returns to the document list only after success", async () => {
+    renderDetail("DOC-DETAIL");
+    await vi.waitFor(() => expect(window.document.body.textContent).toContain("Completion Date"));
+
+    const deleteButton = window.document.querySelector('button[title="Delete"]') as HTMLButtonElement;
+    await act(async () => deleteButton.click());
+    expect(window.document.querySelector('[role="dialog"]')).not.toBeNull();
+    await act(async () => (window.document.querySelector('button[aria-label="Close confirmation dialog"]') as HTMLButtonElement).click());
+    expect(window.document.body.textContent).toContain("Document Information");
+
+    await act(async () => (window.document.querySelector('button[title="Delete"]') as HTMLButtonElement).click());
+    await act(async () => [...window.document.querySelectorAll('button')]
+      .find((button) => button.textContent?.includes("Delete document"))
+      ?.click());
+    await vi.waitFor(() => expect(window.document.body.textContent).toContain("Document List"));
+  });
+
+  it("keeps the detail page and reports deletion failures", async () => {
+    deleteDocument.mockImplementation(() => { throw new Error("Delete failed."); });
+    renderDetail("DOC-DETAIL");
+    await vi.waitFor(() => expect(window.document.body.textContent).toContain("Completion Date"));
+
+    await act(async () => (window.document.querySelector('button[title="Delete"]') as HTMLButtonElement).click());
+    await act(async () => [...window.document.querySelectorAll('button')]
+      .find((button) => button.textContent?.includes("Delete document"))
+      ?.click());
+
+    expect(window.document.body.textContent).toContain("Delete failed.");
+    expect(window.document.body.textContent).toContain("Document Information");
   });
 });
