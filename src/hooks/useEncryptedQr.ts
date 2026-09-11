@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Certificate } from '../types';
-import { getOrCreateEncryptedQr, isPreviewCertificate } from '../services/encryptLink';
+import { Document } from '../types';
+import { getOrCreateEncryptedQr, isPreviewDocument } from '../services/encryptLink';
 
 export type EncryptedQrStatus = 'idle' | 'loading' | 'ready' | 'error';
 
-export function useEncryptedQr(certificate: Certificate) {
-  const preview = isPreviewCertificate(certificate);
-  const cachedUrl = certificate.verificationUrl || '';
+export function useEncryptedQr(document: Document) {
+  const preview = isPreviewDocument(document);
+  const cachedUrl = document.verificationUrl || '';
   const [url, setUrl] = useState(cachedUrl);
   const [status, setStatus] = useState<EncryptedQrStatus>(
     preview ? 'idle' : cachedUrl ? 'ready' : 'loading',
@@ -26,7 +26,7 @@ export function useEncryptedQr(certificate: Certificate) {
     }
     let active = true;
     setStatus('loading');
-    getOrCreateEncryptedQr(certificate)
+    getOrCreateEncryptedQr(document)
       .then((encrypted) => {
         if (!active) return;
         setUrl(encrypted.qrUrl);
@@ -40,7 +40,7 @@ export function useEncryptedQr(certificate: Certificate) {
     return () => {
       active = false;
     };
-  }, [certificate.id, cachedUrl, preview, attempt]);
+  }, [document.id, cachedUrl, preview, attempt]);
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
 

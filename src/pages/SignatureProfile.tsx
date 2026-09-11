@@ -41,7 +41,7 @@ export function SignatureProfile() {
           My signature
         </h2>
         <p className="mt-2 text-slate-500">
-          Your signature is only added to certificates when your approval is
+          Your signature is only added to documents when your approval is
           recorded.
         </p>
       </div>

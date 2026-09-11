@@ -17,7 +17,7 @@ export function ImportHistory() {
           Import history
         </h2>
         <p className="mt-2 text-slate-500">
-          Review every certificate file generated from a selected template.
+          Review every document file generated from a selected template.
         </p>
       </div>
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

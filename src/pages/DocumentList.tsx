@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { storage } from '../services/storage';
-import { Certificate } from '../types';
+import { Document } from '../types';
 import { Link } from 'react-router-dom';
 import { Search, Eye, ShieldAlert, FileBadge, Filter, ArrowUpDown, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
 import { formatDate } from '../utils';
 
-type SortKey = 'certificate' | 'recipient' | 'course' | 'issueDate' | 'status';
+type SortKey = 'document' | 'recipient' | 'course' | 'issueDate' | 'status';
 
-export function CertificateList() {
-  const [certs, setCerts] = useState<Certificate[]>([]);
+export function DocumentList() {
+  const [certs, setCerts] = useState<Document[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'VALID' | 'REVOKED'>('ALL');
   const [sortKey, setSortKey] = useState<SortKey>('issueDate');
@@ -21,12 +21,12 @@ export function CertificateList() {
   }, []);
 
   const loadCerts = () => {
-    setCerts(storage.getCertificates());
+    setCerts(storage.getDocuments());
   };
 
   const handleRevoke = (id: string) => {
-    if (confirm('Are you sure you want to revoke this certificate? This action cannot be undone.')) {
-      storage.updateCertificateStatus(id, 'REVOKED');
+    if (confirm('Are you sure you want to revoke this document? This action cannot be undone.')) {
+      storage.updateDocumentStatus(id, 'REVOKED');
       loadCerts();
     }
   };
@@ -51,7 +51,7 @@ export function CertificateList() {
 
   const sortedCerts = [...filteredCerts].sort((first, second) => {
     const values: Record<SortKey, [string, string]> = {
-      certificate: [first.certificateNumber || first.id, second.certificateNumber || second.id],
+      document: [first.documentNumber || first.id, second.documentNumber || second.id],
       recipient: [first.recipientName, second.recipientName],
       course: [first.courseName, second.courseName],
       issueDate: [first.issueDate, second.issueDate],
@@ -125,7 +125,7 @@ export function CertificateList() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{sortButton('ID', 'certificate')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{sortButton('ID', 'document')}</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{sortButton('Recipient', 'recipient')}</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{sortButton('Course', 'course')}</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{sortButton('Issue Date', 'issueDate')}</th>
@@ -138,7 +138,7 @@ export function CertificateList() {
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                     <FileBadge className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-                    <p>No certificates found.</p>
+                    <p>No documents found.</p>
                   </td>
                 </tr>
               ) : (
@@ -146,7 +146,7 @@ export function CertificateList() {
                   <tr key={cert.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       <div className="font-mono tracking-wider">{cert.shortId || cert.id}</div>
-                      <div className="text-xs text-gray-500">{cert.certificateNumber}</div>
+                      <div className="text-xs text-gray-500">{cert.documentNumber}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{cert.recipientName}</div>
@@ -163,7 +163,7 @@ export function CertificateList() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-3">
-                        <Link to={`/certificates/${cert.id}`} className="text-blue-600 hover:text-blue-900 flex items-center" title="View Detail">
+                        <Link to={`/documents/${cert.id}`} className="text-blue-600 hover:text-blue-900 flex items-center" title="View Detail">
                           <Eye className="w-4 h-4 mr-1" /> View
                         </Link>
                         {cert.status === 'VALID' && (

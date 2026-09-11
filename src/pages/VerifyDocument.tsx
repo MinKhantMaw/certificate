@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { storage } from "../services/storage";
-import { Certificate } from "../types";
-import { CertificatePreview } from "../components/CertificatePreview";
+import { Document } from "../types";
+import { DocumentPreview } from "../components/DocumentPreview";
 import { CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { formatDate, getVerificationUrl } from "../utils";
 
-export function VerifyCertificate() {
+export function VerifyDocument() {
   const { verificationToken } = useParams<{ verificationToken: string }>();
-  const [cert, setCert] = useState<Certificate | null>(null);
+  const [cert, setCert] = useState<Document | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,10 +16,10 @@ export function VerifyCertificate() {
       ? decodeURIComponent(verificationToken).trim()
       : "";
 
-    const verifyCertificate = async () => {
-      const localCertificate = storage.getCertificateByToken(decodedToken);
-      if (localCertificate) {
-        setCert(localCertificate);
+    const verifyDocument = async () => {
+      const localDocument = storage.getDocumentByToken(decodedToken);
+      if (localDocument) {
+        setCert(localDocument);
         return;
       }
 
@@ -28,7 +28,7 @@ export function VerifyCertificate() {
           `/api/verify/${encodeURIComponent(decodedToken)}`,
         );
         if (response.ok) {
-          setCert((await response.json()) as Certificate);
+          setCert((await response.json()) as Document);
           return;
         }
       } catch {
@@ -36,10 +36,10 @@ export function VerifyCertificate() {
       }
 
       storage.initDemoData();
-      setCert(storage.getCertificateByToken(decodedToken) || null);
+      setCert(storage.getDocumentByToken(decodedToken) || null);
     };
 
-    verifyCertificate().finally(() => setLoading(false));
+    verifyDocument().finally(() => setLoading(false));
   }, [verificationToken]);
 
   if (loading) {
@@ -57,7 +57,7 @@ export function VerifyCertificate() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center text-blue-600">
             <span className="font-bold text-xl tracking-tight text-gray-900">
-              Official Certificate Verification
+              Official Document Verification
             </span>
           </div>
           <Link
@@ -76,10 +76,10 @@ export function VerifyCertificate() {
               <XCircle className="w-12 h-12" />
             </div>
             <h2 className="text-3xl font-bold text-gray-900 mb-3">
-              Certificate Not Found
+              Document Not Found
             </h2>
             <p className="text-base text-gray-600 mb-6">
-              This verification token does not match any certificate in our
+              This verification token does not match any document in our
               records.
             </p>
             <div className="bg-gray-50 rounded-lg p-4 font-mono text-xs text-gray-600 break-all border border-gray-200 max-w-lg mx-auto mb-6">
@@ -91,7 +91,7 @@ export function VerifyCertificate() {
               </p>
               <ul className="list-disc pl-5 space-y-1">
                 <li>The verification link was typed or scanned incorrectly.</li>
-                <li>The certificate has not been issued or was removed.</li>
+                <li>The document has not been issued or was removed.</li>
                 <li>The QR code or token is invalid.</li>
               </ul>
             </div>
@@ -116,27 +116,27 @@ export function VerifyCertificate() {
                   className={`text-2xl font-bold mb-2 ${cert.status === "VALID" ? "text-green-800" : "text-amber-800"}`}
                 >
                   {cert.status === "VALID"
-                    ? "✓ Certificate Verified"
+                    ? "✓ Document Verified"
                     : cert.status === "REVOKED"
-                      ? "⚠ Certificate Revoked"
+                      ? "⚠ Document Revoked"
                       : cert.status === "PENDING_APPROVAL"
-                        ? "Certificate Pending Approval"
-                        : "Certificate Not Valid"}
+                        ? "Document Pending Approval"
+                        : "Document Not Valid"}
                 </h2>
                 <p
                   className={`text-sm ${cert.status === "VALID" ? "text-green-700" : "text-amber-700"}`}
                 >
                   {cert.status === "VALID"
-                    ? "This certificate is authentic, official, and currently valid."
+                    ? "This document is authentic, official, and currently valid."
                     : cert.status === "REVOKED"
-                      ? "This certificate was previously issued but has been revoked and is no longer valid."
+                      ? "This document was previously issued but has been revoked and is no longer valid."
                       : cert.status === "PENDING_APPROVAL"
-                        ? "This certificate is awaiting approval from the assigned approvers."
-                        : "This certificate is not currently valid."}
+                        ? "This document is awaiting approval from the assigned approvers."
+                        : "This document is not currently valid."}
                 </p>
               </div>
 
-              {/* Certificate Details */}
+              {/* Document Details */}
               <div className="p-8">
                 <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
                   <div className="sm:col-span-1">
@@ -149,7 +149,7 @@ export function VerifyCertificate() {
                   </div>
                   <div className="sm:col-span-1">
                     <dt className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      Certificate ID
+                      Document ID
                     </dt>
                     <dd className="mt-1 font-mono text-lg font-bold tracking-wider text-gray-900">
                       {cert.shortId || cert.id}
@@ -157,18 +157,18 @@ export function VerifyCertificate() {
                   </div>
                   <div className="sm:col-span-1">
                     <dt className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      Certificate Number
+                      Document Number
                     </dt>
                     <dd className="mt-1 text-lg font-bold text-gray-900">
-                      {cert.certificateNumber || cert.id}
+                      {cert.documentNumber || cert.id}
                     </dd>
                   </div>
                   <div className="sm:col-span-1">
                     <dt className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      Certificate Title
+                      Document Title
                     </dt>
                     <dd className="mt-1 text-base font-medium text-gray-900">
-                      {cert.certificateTitle}
+                      {cert.documentTitle}
                     </dd>
                   </div>
                   <div className="sm:col-span-1">
@@ -197,7 +197,7 @@ export function VerifyCertificate() {
                   </div>
                   <div className="sm:col-span-1">
                     <dt className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      Certificate Status
+                      Document Status
                     </dt>
                     <dd className="mt-1">
                       <span
@@ -223,10 +223,10 @@ export function VerifyCertificate() {
               </div>
             </div>
 
-            {/* Certificate Preview */}
+            {/* Document Preview */}
             <div className="bg-gray-100 p-8 rounded-2xl border border-gray-200 flex justify-center overflow-x-auto shadow-inner">
               <div className="origin-top-left">
-                <CertificatePreview certificate={cert} />
+                <DocumentPreview document={cert} />
               </div>
             </div>
           </div>

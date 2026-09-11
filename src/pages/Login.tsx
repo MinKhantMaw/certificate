@@ -38,14 +38,14 @@ export function Login() {
           Sign in to your account
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Certificate Management System
+          Document Management System
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-gray-100">
           <form className="space-y-6" onSubmit={handleLogin}>
-            <div>
+            {/* <div>
               <label
                 htmlFor="role"
                 className="block text-sm font-medium text-gray-700"
@@ -62,7 +62,7 @@ export function Login() {
                 <option value="TRAINER">Trainer</option>
                 <option value="APPROVER">Approver</option>
               </select>
-            </div>
+            </div> */}
             <div>
               <label
                 htmlFor="email"

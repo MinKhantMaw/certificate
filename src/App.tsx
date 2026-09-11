@@ -25,14 +25,14 @@ const ImportExcel = lazy(() =>
     default: ImportExcel,
   })),
 );
-const CertificateList = lazy(() =>
-  import("./pages/CertificateList").then(({ CertificateList }) => ({
-    default: CertificateList,
+const DocumentList = lazy(() =>
+  import("./pages/DocumentList").then(({ DocumentList }) => ({
+    default: DocumentList,
   })),
 );
-const CertificateDetail = lazy(() =>
-  import("./pages/CertificateDetail").then(({ CertificateDetail }) => ({
-    default: CertificateDetail,
+const DocumentDetail = lazy(() =>
+  import("./pages/DocumentDetail").then(({ DocumentDetail }) => ({
+    default: DocumentDetail,
   })),
 );
 const ImportHistory = lazy(() =>
@@ -40,14 +40,14 @@ const ImportHistory = lazy(() =>
     default: ImportHistory,
   })),
 );
-const VerifyCertificate = lazy(() =>
-  import("./pages/VerifyCertificate").then(({ VerifyCertificate }) => ({
-    default: VerifyCertificate,
+const VerifyDocument = lazy(() =>
+  import("./pages/VerifyDocument").then(({ VerifyDocument }) => ({
+    default: VerifyDocument,
   })),
 );
-const CertificateTemplates = lazy(() =>
-  import("./pages/CertificateTemplates").then(({ CertificateTemplates }) => ({
-    default: CertificateTemplates,
+const DocumentTemplates = lazy(() =>
+  import("./pages/DocumentTemplates").then(({ DocumentTemplates }) => ({
+    default: DocumentTemplates,
   })),
 );
 const Approvals = lazy(() =>
@@ -78,7 +78,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route
             path="/verify/:verificationToken"
-            element={<VerifyCertificate />}
+            element={<VerifyDocument />}
           />
 
           {/* Protected Admin Routes */}
@@ -93,8 +93,8 @@ export default function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route
-              path="certificate-templates"
-              element={<CertificateTemplates />}
+              path="document-templates"
+              element={<DocumentTemplates />}
             />
             <Route
               path="approvals"
@@ -107,8 +107,8 @@ export default function App() {
             <Route path="profile" element={<SignatureProfile />} />
             <Route path="import" element={<ImportExcel />} />
             <Route path="imports" element={<ImportHistory />} />
-            <Route path="certificates" element={<CertificateList />} />
-            <Route path="certificates/:id" element={<CertificateDetail />} />
+            <Route path="documents" element={<DocumentList />} />
+            <Route path="documents/:id" element={<DocumentDetail />} />
 
             {/* Placeholder for unimplemented routes */}
             <Route

@@ -1,4 +1,4 @@
-import { Certificate } from '../types';
+import { Document } from '../types';
 
 export interface EncryptPayload {
   cert_id: string;
@@ -14,16 +14,16 @@ export interface EncryptedQr {
   token: string;
 }
 
-export function isPreviewCertificate(certificate: Certificate): boolean {
-  return certificate.id === 'preview' || certificate.verificationToken === 'preview';
+export function isPreviewDocument(document: Document): boolean {
+  return document.id === 'preview' || document.verificationToken === 'preview';
 }
 
-export async function requestEncryptedQr(certificate: Certificate): Promise<EncryptedQr> {
-  if (isPreviewCertificate(certificate)) throw new Error('Preview certificates do not have a verification URL.');
-  if (!certificate.verificationToken || !certificate.verificationUrl) {
-    throw new Error('Certificate is missing its verification identity.');
+export async function requestEncryptedQr(document: Document): Promise<EncryptedQr> {
+  if (isPreviewDocument(document)) throw new Error('Preview documents do not have a verification URL.');
+  if (!document.verificationToken || !document.verificationUrl) {
+    throw new Error('Document is missing its verification identity.');
   }
-  return { qrUrl: certificate.verificationUrl, token: certificate.verificationToken };
+  return { qrUrl: document.verificationUrl, token: document.verificationToken };
 }
 
 export const getOrCreateEncryptedQr = requestEncryptedQr;

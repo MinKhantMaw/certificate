@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { storage } from "../services/storage";
-import { Certificate } from "../types";
-import { CertificatePreview } from "../components/CertificatePreview";
+import { Document } from "../types";
+import { DocumentPreview } from "../components/DocumentPreview";
 import { useEncryptedQr } from "../hooks/useEncryptedQr";
 import { getVerificationUrl } from "../utils";
 import {
@@ -16,15 +16,15 @@ import {
   EyeOff,
 } from "lucide-react";
 
-// Printing before the QR resolves would produce a certificate with an empty QR box.
-function PrintCertificateButton({
-  certificate,
+// Printing before the QR resolves would produce a document with an empty QR box.
+function PrintDocumentButton({
+  document,
   requiresQr,
 }: {
-  certificate: Certificate;
+  document: Document;
   requiresQr: boolean;
 }) {
-  const { status, retry } = useEncryptedQr(certificate);
+  const { status, retry } = useEncryptedQr(document);
 
   if (requiresQr && status === "error")
     return (
@@ -53,20 +53,20 @@ function PrintCertificateButton({
   );
 }
 
-export function CertificateDetail() {
+export function DocumentDetail() {
   const { id } = useParams<{ id: string }>();
-  const [cert, setCert] = useState<Certificate | null>(null);
+  const [cert, setCert] = useState<Document | null>(null);
   const [showQr, setShowQr] = useState(true);
 
   useEffect(() => {
     if (id) {
-      setCert(storage.getCertificateById(id) || null);
+      setCert(storage.getDocumentById(id) || null);
     }
   }, [id]);
 
   const handleRevoke = () => {
-    if (cert && confirm("Are you sure you want to revoke this certificate?")) {
-      storage.updateCertificateStatus(cert.id, "REVOKED");
+    if (cert && confirm("Are you sure you want to revoke this document?")) {
+      storage.updateDocumentStatus(cert.id, "REVOKED");
       setCert({ ...cert, status: "REVOKED" });
     }
   };
@@ -74,10 +74,10 @@ export function CertificateDetail() {
   if (!cert) {
     return (
       <div className="p-8 text-center text-gray-500">
-        Certificate not found.
+        Document not found.
         <br />
         <Link
-          to="/certificates"
+          to="/documents"
           className="text-blue-600 mt-4 inline-block hover:underline"
         >
           Back to List
@@ -93,7 +93,7 @@ export function CertificateDetail() {
       {/* Header Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200 print:hidden">
         <Link
-          to="/certificates"
+          to="/documents"
           className="flex items-center text-gray-600 hover:text-gray-900"
         >
           <ArrowLeft className="w-5 h-5 mr-2" />
@@ -115,8 +115,8 @@ export function CertificateDetail() {
             className={`flex items-center px-4 py-2 border rounded-lg font-medium ${showQr ? "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
             title={
               showQr
-                ? "Hide the verification QR code on this certificate"
-                : "Show the verification QR code on this certificate"
+                ? "Hide the verification QR code on this document"
+                : "Show the verification QR code on this document"
             }
           >
             {showQr ? (
@@ -126,7 +126,7 @@ export function CertificateDetail() {
             )}
             {showQr ? "QR On" : "QR Off"}
           </button>
-          <PrintCertificateButton certificate={cert} requiresQr={showQr} />
+          <PrintDocumentButton document={cert} requiresQr={showQr} />
           {cert.status === "VALID" && (
             <button
               onClick={handleRevoke}
@@ -175,14 +175,14 @@ export function CertificateDetail() {
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Certificate ID</span>
+              <span className="text-gray-500">Document ID</span>
               <span className="font-mono font-medium tracking-wider">
                 {cert.shortId || cert.id}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Certificate Number</span>
-              <span className="font-medium">{cert.certificateNumber}</span>
+              <span className="text-gray-500">Document Number</span>
+              <span className="font-medium">{cert.documentNumber}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Token</span>
@@ -197,8 +197,8 @@ export function CertificateDetail() {
       {/* Print Area */}
       <div className="bg-gray-100 p-8 rounded-xl border border-gray-200 flex justify-center overflow-x-auto print:bg-white print:p-0 print:border-none print:m-0 print:block">
         <div className="print-container origin-top-left">
-          <CertificatePreview
-            certificate={cert}
+          <DocumentPreview
+            document={cert}
             baseUrl={window.location.origin}
             showQr={showQr}
           />

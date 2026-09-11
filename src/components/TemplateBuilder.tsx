@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { storage } from "../services/storage";
 import {
-  CertificateTemplate,
+  DocumentTemplate,
   TemplateElement,
   TemplateLayout,
   TemplatePageSize,
@@ -38,7 +38,7 @@ const PAGE_SIZES: Record<TemplatePageSize, { width: number; height: number }> =
 const SAMPLE_DATA: Record<string, string> = {
   name: "John Doe",
   course: "Full Stack Development",
-  certificate_id: "CERT-001",
+  document_id: "DOC-001",
   issue_date: "2026-09-07",
   department: "Engineering",
 };
@@ -119,7 +119,7 @@ export function TemplateBuilder({
   onChange,
   onBackgroundUploadChange,
 }: {
-  template: CertificateTemplate;
+  template: DocumentTemplate;
   onChange: (layout: TemplateLayout) => void;
   onBackgroundUploadChange?: (uploading: boolean) => void;
 }) {

@@ -30,11 +30,11 @@ export function AdminLayout() {
   const navItems = [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     {
-      to: "/certificate-templates",
+      to: "/document-templates",
       icon: Palette,
       label: "Templates",
     },
-    { to: "/certificates", icon: FileBadge, label: "Documents" },
+    { to: "/documents", icon: FileBadge, label: "Documents" },
     { to: "/import", icon: Upload, label: "Import Excel" },
     { to: "/imports", icon: History, label: "Import History" },
     // { to: "/users", icon: Users, label: "Users" },
@@ -48,7 +48,7 @@ export function AdminLayout() {
           // {
           //   to: "/approvals",
           //   icon: ShieldCheck,
-          //   label: "Certificate Approvals",
+          //   label: "Document Approvals",
           // },
         ]
       : []),

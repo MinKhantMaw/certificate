@@ -1,5 +1,5 @@
 export type UserRole = 'ADMIN' | 'TRAINER' | 'APPROVER';
-export type CertificateStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'VALID' | 'REJECTED' | 'REVOKED';
+export type DocumentStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'VALID' | 'REJECTED' | 'REVOKED';
 export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface User {
@@ -11,7 +11,7 @@ export interface User {
   signatureUploadedAt?: string;
 }
 
-export interface CertificateTemplate {
+export interface DocumentTemplate {
   id: string;
   name: string;
   description: string;
@@ -99,9 +99,9 @@ export interface PendingImportTrainee {
   dynamicData?: Record<string, string | number>;
 }
 
-export interface CertificateApproval {
+export interface DocumentApproval {
   id: string;
-  certificateId: string;
+  documentId: string;
   approverId: string;
   status: ApprovalStatus;
   rejectionReason?: string;
@@ -111,9 +111,9 @@ export interface CertificateApproval {
   updatedAt: string;
 }
 
-export interface Certificate {
+export interface Document {
   id: string;
-  certificateNumber: string;
+  documentNumber: string;
   shortId?: string;
   verificationToken: string;
   verificationUrl: string;
@@ -121,14 +121,14 @@ export interface Certificate {
   encryptedQrToken?: string;
   encryptedQrAt?: string;
   recipientName: string;
-  certificateTitle: string;
+  documentTitle: string;
   courseName: string;
   issueDate: string;
   organization: string;
-  certificateType: string;
+  documentType: string;
   email: string;
-  status: CertificateStatus;
-  certificateTemplateId?: string;
+  status: DocumentStatus;
+  documentTemplateId?: string;
   signatureUserId?: string;
   signatureImage?: string;
   signerName?: string;
@@ -149,11 +149,11 @@ export interface ImportRecord {
 
 export interface ImportedRow {
   recipient_name: string;
-  certificate_title: string;
+  document_title: string;
   course_name: string;
   issue_date: string;
   organization: string;
-  certificate_type: string;
+  document_type: string;
   email: string;
   employee_id?: string;
   department?: string;

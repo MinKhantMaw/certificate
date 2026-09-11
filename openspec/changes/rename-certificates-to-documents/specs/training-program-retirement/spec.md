@@ -1,10 +1,4 @@
-# training-program-retirement Specification
-
-## Purpose
-
-Retire training-program management so document issuance and import records operate independently of training-program data.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Remove training-program user interfaces
 The system SHALL not expose training-program pages, training-program routes, or training-program navigation. It SHALL not present training-program selection or training-code validation in the document import workflow.

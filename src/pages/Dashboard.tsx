@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import { storage } from '../services/storage';
-import { Certificate, ImportBatch } from '../types';
+import { Document, ImportBatch } from '../types';
 import { FileBadge, Upload, ShieldCheck, ShieldAlert, History, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatDate } from '../utils';
 
 export function Dashboard() {
-  const [certs, setCerts] = useState<Certificate[]>([]);
+  const [certs, setCerts] = useState<Document[]>([]);
   const [imports, setImports] = useState<ImportBatch[]>([]);
 
   useEffect(() => {
-    setCerts(storage.getCertificates());
+    setCerts(storage.getDocuments());
     setImports(storage.getImportBatches());
   }, []);
 
@@ -34,38 +34,38 @@ export function Dashboard() {
           Import Excel
         </Link>
         <Link 
-          to="/certificates" 
+          to="/documents" 
           className="flex items-center justify-center bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors shadow-sm"
         >
           <FileBadge className="w-4 h-4 mr-2" />
-          View Certificates
+          View Documents
         </Link>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Certificates" value={totalCerts} icon={FileBadge} color="blue" />
-        <StatCard title="Valid Certificates" value={validCerts} icon={ShieldCheck} color="green" />
+        <StatCard title="Total Documents" value={totalCerts} icon={FileBadge} color="blue" />
+        <StatCard title="Valid Documents" value={validCerts} icon={ShieldCheck} color="green" />
         <StatCard title="Revoked" value={revokedCerts} icon={ShieldAlert} color="red" />
         <StatCard title="Total Imported Records" value={totalImportedRows} icon={History} color="purple" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-        {/* Recent Certificates */}
+        {/* Recent Documents */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 className="font-semibold text-gray-900">Recent Certificates</h3>
-            <Link to="/certificates" className="text-sm text-blue-600 hover:text-blue-800 font-medium">View all</Link>
+            <h3 className="font-semibold text-gray-900">Recent Documents</h3>
+            <Link to="/documents" className="text-sm text-blue-600 hover:text-blue-800 font-medium">View all</Link>
           </div>
           <div className="divide-y divide-gray-100">
             {recentCerts.length === 0 ? (
-              <p className="p-6 text-center text-gray-500">No certificates found.</p>
+              <p className="p-6 text-center text-gray-500">No documents found.</p>
             ) : (
               recentCerts.map(cert => (
                 <div key={cert.id} className="p-4 hover:bg-gray-50 transition-colors flex justify-between items-center">
                   <div>
                     <p className="font-medium text-gray-900">{cert.recipientName}</p>
-                    <p className="text-sm text-gray-500">{cert.certificateTitle} &bull; {cert.id}</p>
+                    <p className="text-sm text-gray-500">{cert.documentTitle} &bull; {cert.id}</p>
                   </div>
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     cert.status === 'VALID' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'

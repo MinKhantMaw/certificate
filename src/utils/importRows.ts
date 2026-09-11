@@ -25,5 +25,5 @@ export function parseImportedRow(
   const dynamicData = Object.fromEntries(Object.entries(row).map(([key, item]) => [
     key.trim().toLowerCase(), typeof item === "number" ? item : String(item ?? "").trim(),
   ])) as Record<string, string | number>;
-  return { recipient_name: name, email, employee_id: value("employee_id"), department: value("department"), position: value("position"), completion_date: value("completion_date"), certificate_title: value("certificate_title"), course_name: value("course_name"), issue_date: value("issue_date"), organization: value("organization"), certificate_type: value("certificate_type"), isValid: !errors.length, errors, dynamicData };
+  return { recipient_name: name, email, employee_id: value("employee_id"), department: value("department"), position: value("position"), completion_date: value("completion_date"), document_title: value("document_title"), course_name: value("course_name"), issue_date: value("issue_date"), organization: value("organization"), document_type: value("document_type"), isValid: !errors.length, errors, dynamicData };
 }

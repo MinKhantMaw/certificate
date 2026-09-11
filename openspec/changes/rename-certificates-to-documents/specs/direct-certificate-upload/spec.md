@@ -1,10 +1,4 @@
-# direct-certificate-upload Specification
-
-## Purpose
-
-Enable administrators to issue documents from a validated Excel file without first creating a training program.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Upload certificates from the certificate list
 The system SHALL provide an upload action on the document list that opens a direct document-import workflow. The workflow SHALL require the user to select an active document template before accepting an Excel file.

@@ -11,7 +11,7 @@ export function Approvals() {
         (item) => item.approverId === user?.id && item.status === "PENDING",
       ),
   );
-  const certs = storage.getCertificates();
+  const certs = storage.getDocuments();
 
   const act = (approvalId: string, status: "APPROVED" | "REJECTED") => {
     const approval = storage
@@ -29,11 +29,11 @@ export function Approvals() {
       updatedAt: timestamp,
     });
 
-    // Single-approval model: whichever approver decides first finalizes the certificate.
-    const certificate = storage.getCertificateById(approval.certificateId);
-    if (certificate) {
-      storage.updateCertificate({
-        ...certificate,
+    // Single-approval model: whichever approver decides first finalizes the document.
+    const document = storage.getDocumentById(approval.documentId);
+    if (document) {
+      storage.updateDocument({
+        ...document,
         status: status === "APPROVED" ? "VALID" : "REJECTED",
         ...(status === "APPROVED" && user
           ? {
@@ -46,10 +46,10 @@ export function Approvals() {
       });
     }
 
-    // Close out any other still-pending approval records for this certificate
+    // Close out any other still-pending approval records for this document
     // so it doesn't linger as "pending" in other approvers' queues.
     storage
-      .getApprovalsForCertificate(approval.certificateId)
+      .getApprovalsForDocument(approval.documentId)
       .filter((item) => item.id !== approvalId && item.status === "PENDING")
       .forEach((item) =>
         storage.updateApproval({ ...item, status, updatedAt: timestamp }),
@@ -74,8 +74,8 @@ export function Approvals() {
           Pending approvals
         </h2>
         <p className="mt-2 text-slate-500">
-          Review certificates assigned to you. Approving or rejecting finalizes
-          the certificate immediately.
+          Review documents assigned to you. Approving or rejecting finalizes
+          the document immediately.
         </p>
       </div>
       {user?.role !== "APPROVER" && (
@@ -89,7 +89,7 @@ export function Approvals() {
           <ShieldCheck className="mx-auto text-slate-300" size={42} />
           <h3 className="mt-4 font-semibold text-slate-900">Queue is clear</h3>
           <p className="mt-1 text-sm text-slate-500">
-            No certificates are waiting for your decision.
+            No documents are waiting for your decision.
           </p>
         </div>
       ) : (
@@ -98,7 +98,7 @@ export function Approvals() {
             <thead className="bg-slate-50">
               <tr>
                 {[
-                  "Certificate",
+                  "Document",
                   "Trainee",
                   "Training",
                   "Status",
@@ -116,13 +116,13 @@ export function Approvals() {
             <tbody className="divide-y divide-slate-100">
               {approvals.map((approval) => {
                 const cert = certs.find(
-                  (item) => item.id === approval.certificateId,
+                  (item) => item.id === approval.documentId,
                 );
                 if (!cert) return null;
                 return (
                   <tr key={approval.id}>
                     <td className="px-5 py-4 font-mono text-sm text-slate-900">
-                      {cert.certificateNumber}
+                      {cert.documentNumber}
                     </td>
                     <td className="px-5 py-4 text-sm font-medium text-slate-900">
                       {cert.recipientName}

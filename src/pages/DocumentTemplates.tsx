@@ -9,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { storage } from "../services/storage";
-import { CertificateTemplate, TemplateLayout } from "../types";
+import { DocumentTemplate, TemplateLayout } from "../types";
 import { createDefaultLayout } from "../utils/templateLayout";
 import { validateTemplate } from "../utils/templateValidation";
 
@@ -19,8 +19,8 @@ const TemplateBuilder = lazy(() =>
   })),
 );
 
-export function CertificateTemplates() {
-  const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
+export function DocumentTemplates() {
+  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -48,7 +48,7 @@ export function CertificateTemplates() {
     resetForm();
     setShowForm(true);
   };
-  const openEdit = (template: CertificateTemplate) => {
+  const openEdit = (template: DocumentTemplate) => {
     setEditingId(template.id);
     setName(template.name);
     setDescription(template.description);
@@ -93,7 +93,7 @@ export function CertificateTemplates() {
     setTemplates([...storage.getTemplates()]);
     resetForm();
   };
-  const toggle = async (template: CertificateTemplate) => {
+  const toggle = async (template: DocumentTemplate) => {
     await storage.updateTemplate({
       ...template,
       status: template.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
@@ -101,7 +101,7 @@ export function CertificateTemplates() {
     });
     setTemplates([...storage.getTemplates()]);
   };
-  const remove = async (template: CertificateTemplate) => {
+  const remove = async (template: DocumentTemplate) => {
     if (!window.confirm(`Delete the template "${template.name}"?`)) return;
     await storage.deleteTemplate(template.id);
     setTemplates([...storage.getTemplates()]);
@@ -114,7 +114,7 @@ export function CertificateTemplates() {
             Design library
           </p>
           <h2 className="mt-2 text-3xl font-semibold text-slate-950">
-            Certificate templates
+            Templates
           </h2>
           <p className="mt-2 text-slate-500">
             Choose the visual system that every achievement inherits.
@@ -213,7 +213,7 @@ export function CertificateTemplates() {
               <div className="flex h-full w-full flex-col items-center justify-center border border-white/50 text-center text-white">
                 <Palette size={20} />
                 <p className="mt-3 text-xs uppercase tracking-[0.25em]">
-                  Certificate
+                  Document
                 </p>
                 <p className="mt-1 font-serif text-2xl">{template.name}</p>
                 <p className="mt-2 text-xs text-white/70">

@@ -6,9 +6,9 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function generateCertificateNumber(index: number): string {
+export function generateDocumentNumber(index: number): string {
   const year = new Date().getFullYear();
-  return `CERT-${year}-${String(index).padStart(6, '0')}`;
+  return `DOC-${year}-${String(index).padStart(6, '0')}`;
 }
 
 // Crockford-style base32: no I, L, O or U, so the ID cannot be misread when typed by hand.
@@ -37,12 +37,12 @@ function shortIdChecksum(indexes: number[]): string {
   return SHORT_ID_ALPHABET[total % SHORT_ID_ALPHABET.length];
 }
 
-export function generateShortCertificateId(): string {
+export function generateShortDocumentId(): string {
   const indexes = randomAlphabetIndexes(SHORT_ID_BODY_LENGTH);
   return indexes.map((index) => SHORT_ID_ALPHABET[index]).join('') + shortIdChecksum(indexes);
 }
 
-export function isValidShortCertificateId(value: string): boolean {
+export function isValidShortDocumentId(value: string): boolean {
   if (typeof value !== 'string' || value.length !== SHORT_ID_LENGTH) return false;
   const indexes = [...value.slice(0, SHORT_ID_BODY_LENGTH)].map((character) => SHORT_ID_ALPHABET.indexOf(character));
   if (indexes.some((index) => index < 0)) return false;
