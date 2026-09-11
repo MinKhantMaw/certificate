@@ -84,7 +84,7 @@ export const storage = {
     const batches = read<(ImportBatch & { trainingProgramId?: string; reviewedBy?: string; reviewedAt?: string; rejectionReason?: string })[]>(KEYS.importBatches, []);
     const migrated = batches.map(({ trainingProgramId: _trainingProgramId, reviewedBy: _reviewedBy, reviewedAt: _reviewedAt, rejectionReason: _rejectionReason, ...batch }) => ({ ...batch, status: "COMPLETED" as const }));
     if (JSON.stringify(batches) !== JSON.stringify(migrated)) write(KEYS.importBatches, migrated);
-    return migrated;
+    return migrated.sort((a, b) => (b.submittedAt || b.createdAt).localeCompare(a.submittedAt || a.createdAt));
   },
   getImportBatch: (id: string) => storage.getImportBatches().find(item => item.id === id),
   saveImportBatch: (batch: ImportBatch) => write(KEYS.importBatches, [...storage.getImportBatches(), batch]),

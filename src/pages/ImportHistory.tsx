@@ -1,12 +1,27 @@
 import { useEffect, useState } from "react";
-import { FileSpreadsheet, History } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileSpreadsheet, History } from "lucide-react";
 import { ImportBatch } from "../types";
 import { storage } from "../services/storage";
 import { formatDate } from "../utils";
 
 export function ImportHistory() {
   const [imports, setImports] = useState<ImportBatch[]>([]);
-  useEffect(() => setImports(storage.getImportBatches()), []);
+  const [templates, setTemplates] = useState(() => storage.getTemplates());
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+
+  useEffect(() => {
+    setImports(storage.getImportBatches());
+    storage.initTemplates().then(setTemplates);
+  }, []);
+
+  const totalPages = Math.max(1, Math.ceil(imports.length / pageSize));
+  const visibleImports = imports.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -26,7 +41,6 @@ export function ImportHistory() {
             <thead className="bg-slate-50">
               <tr>
                 {[
-                  "Import ID",
                   "File",
                   "Template",
                   "Rows",
@@ -45,7 +59,7 @@ export function ImportHistory() {
             <tbody className="divide-y divide-slate-100">
               {imports.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center text-slate-500">
+                  <td colSpan={5} className="p-12 text-center text-slate-500">
                     <History
                       className="mx-auto mb-3 text-slate-300"
                       size={40}
@@ -54,11 +68,8 @@ export function ImportHistory() {
                   </td>
                 </tr>
               ) : (
-                imports.map((batch) => (
+                visibleImports.map((batch) => (
                   <tr key={batch.id}>
-                    <td className="px-5 py-4 font-mono text-sm text-slate-900">
-                      {batch.id}
-                    </td>
                     <td className="px-5 py-4 text-sm text-slate-700">
                       <FileSpreadsheet
                         className="mr-2 inline text-emerald-600"
@@ -67,7 +78,7 @@ export function ImportHistory() {
                       {batch.fileName}
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-600">
-                      {storage.getTemplates().find((template) => template.id === batch.templateId)?.name || "Unknown"}
+                      {templates.find((template) => template.id === batch.templateId)?.name || "Unknown"}
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-600">
                       {batch.validRows} valid / {batch.totalRows} total
@@ -88,6 +99,49 @@ export function ImportHistory() {
             </tbody>
           </table>
         </div>
+        {imports.length > 0 && (
+          <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <p>
+              Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, imports.length)} of {imports.length}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-2">
+                Per page
+                <select
+                  value={pageSize}
+                  onChange={(event) => {
+                    setPageSize(Number(event.target.value));
+                    setPage(1);
+                  }}
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                </select>
+              </label>
+              <span className="px-2">Page {page} of {totalPages}</span>
+              <button
+                type="button"
+                disabled={page === 1}
+                onClick={() => setPage((current) => current - 1)}
+                className="rounded-md border border-slate-300 p-1.5 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                disabled={page === totalPages}
+                onClick={() => setPage((current) => current + 1)}
+                className="rounded-md border border-slate-300 p-1.5 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Next page"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

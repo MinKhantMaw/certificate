@@ -48,7 +48,7 @@ export function DocumentList() {
   const [sortKey, setSortKey] = useState<SortKey>('status');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
   const [revokeId, setRevokeId] = useState<string | null>(null);
 
   useEffect(() => {
