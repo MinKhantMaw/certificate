@@ -25,6 +25,7 @@ const template: DocumentTemplate = {
       { id: "shape", type: "shape", x: 0, y: 0, width: 10, height: 10, rotation: 0 },
       { id: "date", type: "text", key: "completionDate", x: 0, y: 0, width: 10, height: 10, rotation: 0 },
       { id: "missing", type: "text", key: "department", x: 0, y: 0, width: 10, height: 10, rotation: 0 },
+      { id: "qr", type: "qr", x: 0, y: 0, width: 10, height: 10, rotation: 0 },
     ],
   },
 };
@@ -109,7 +110,8 @@ describe("document detail fields", () => {
     expect(window.document.body.textContent).toContain("2026-09-01");
     expect(window.document.body.textContent).toContain("-");
     expect(window.document.body.textContent).toContain("Verification Page");
-    expect(window.document.body.textContent).toContain("QR On");
+    expect(window.document.body.textContent).not.toContain("QR On");
+    expect(window.document.body.textContent).not.toContain("QR Off");
     expect(window.document.body.textContent).toContain("Download PDF");
     expect(window.document.body.textContent).toContain("Revoke");
     expect(window.document.querySelectorAll('[data-testid="document-preview"]')).toHaveLength(1);

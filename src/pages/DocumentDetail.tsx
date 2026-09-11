@@ -12,8 +12,6 @@ import {
   ExternalLink,
   Printer,
   RefreshCw,
-  QrCode,
-  EyeOff,
 } from "lucide-react";
 
 // Printing before the QR resolves would produce a document with an empty QR box.
@@ -24,7 +22,7 @@ function PrintDocumentButton({
   document: Document;
   requiresQr: boolean;
 }) {
-  const { status, retry } = useEncryptedQr(document);
+  const { status, retry } = useEncryptedQr(document, requiresQr);
 
   if (requiresQr && status === "error")
     return (
@@ -96,8 +94,6 @@ export function DocumentDetail() {
   const [cert, setCert] = useState<Document | null>(null);
   const [template, setTemplate] = useState<DocumentTemplate | null>(null);
   const [templateLoading, setTemplateLoading] = useState(false);
-  const [showQr, setShowQr] = useState(true);
-
   useEffect(() => {
     if (id) {
       const document = storage.getDocumentById(id) || null;
@@ -137,6 +133,9 @@ export function DocumentDetail() {
 
   const verifyUrl = getVerificationUrl(cert.verificationToken);
   const detailFields = getDetailFields(template || undefined);
+  const requiresQr = Boolean(
+    template?.layout?.elements.some((element) => element.type === "qr"),
+  );
 
   return (
     <div className="space-y-6">
@@ -159,24 +158,7 @@ export function DocumentDetail() {
             <ExternalLink className="w-4 h-4 mr-2" />
             Verification Page
           </a>
-          <button
-            onClick={() => setShowQr((value) => !value)}
-            aria-pressed={showQr}
-            className={`flex items-center px-4 py-2 border rounded-lg font-medium ${showQr ? "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
-            title={
-              showQr
-                ? "Hide the verification QR code on this document"
-                : "Show the verification QR code on this document"
-            }
-          >
-            {showQr ? (
-              <QrCode className="w-4 h-4 mr-2" />
-            ) : (
-              <EyeOff className="w-4 h-4 mr-2" />
-            )}
-            {showQr ? "QR On" : "QR Off"}
-          </button>
-          <PrintDocumentButton document={cert} requiresQr={showQr} />
+          <PrintDocumentButton document={cert} requiresQr={requiresQr} />
           {cert.status === "VALID" && (
             <button
               onClick={handleRevoke}
@@ -220,7 +202,6 @@ export function DocumentDetail() {
           <DocumentPreview
             document={cert}
             baseUrl={window.location.origin}
-            showQr={showQr}
           />
         </div>
       </div>

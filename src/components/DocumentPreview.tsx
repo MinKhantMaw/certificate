@@ -29,11 +29,9 @@ function DocumentQrCode({ document }: { document: Document }) {
 export function DocumentPreview({
   document,
   baseUrl,
-  showQr = true,
 }: {
   document: Document;
   baseUrl?: string;
-  showQr?: boolean;
 }) {
   const hasTemplate = Boolean(document.documentTemplateId);
   const [loadingTemplate, setLoadingTemplate] = useState(
@@ -88,7 +86,6 @@ export function DocumentPreview({
       <DynamicDocumentPreview
         document={document}
         layout={template.layout}
-        showQr={showQr}
       />
     );
   }
@@ -187,16 +184,6 @@ export function DocumentPreview({
             </span>
           </div>
           <div className="absolute bottom-0 left-1/2 flex shrink-0 -translate-x-1/2 flex-col items-center gap-1">
-            {showQr && (
-              <div className="flex flex-col items-center gap-1 border border-[#d9d9d9] bg-white p-1">
-                <div className="h-15 w-15">
-                  <DocumentQrCode document={document} />
-                </div>
-                <span className="text-[clamp(6px,.75vw,9px)] text-[#555]">
-                  Scan to Verify
-                </span>
-              </div>
-            )}
             <span className="font-mono text-[clamp(6px,.75vw,9px)] tracking-wider text-[#555]">
               ID: {document.shortId || document.documentNumber}
             </span>
@@ -231,11 +218,9 @@ export function DocumentPreview({
 function DynamicDocumentPreview({
   document,
   layout,
-  showQr,
 }: {
   document: Document;
   layout: TemplateLayout;
-  showQr: boolean;
 }) {
   const [backgroundError, setBackgroundError] = useState(false);
   const data: Record<string, unknown> = {
@@ -344,7 +329,7 @@ function DynamicDocumentPreview({
             />
           );
         if (element.type === "qr")
-          return showQr ? (
+          return (
             <div
               key={element.id}
               style={{
@@ -357,7 +342,7 @@ function DynamicDocumentPreview({
             >
               <DocumentQrCode document={document} />
             </div>
-          ) : null;
+          );
         const source =
           element.type === "signature"
             ? signatures.find((user) => user.id === element.signatureId)
