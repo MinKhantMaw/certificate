@@ -64,7 +64,7 @@ function PrintDocumentButton({
         onClick={downloadImage}
         disabled={!ready || downloading}
         title={ready ? undefined : "Waiting for the verification QR code"}
-        className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:cursor-not-allowed disabled:bg-blue-300"
+        className="flex items-center px-4 py-2 bg-[#0054a6] text-white rounded-lg hover:bg-[#003f82] font-medium disabled:cursor-not-allowed disabled:bg-blue-300"
       >
         <Download className="w-4 h-4 mr-2" />
         {downloading ? "Preparing image..." : ready ? "Download Image" : "Preparing QR..."}
@@ -214,7 +214,7 @@ export function DocumentDetail() {
           Back
         </Link>
         <div className="flex space-x-3">
-          <a
+          {/* <a
             href={verifyUrl}
             target="_blank"
             rel="noreferrer"
@@ -222,7 +222,7 @@ export function DocumentDetail() {
           >
             <ExternalLink className="w-4 h-4 mr-2" />
             Verification Page
-          </a>
+          </a> */}
           <PrintDocumentButton document={cert} requiresQr={requiresQr} />
           {cert.status === "VALID" && (
             <button

@@ -65,8 +65,8 @@ export function Landing() {
                 <LockKeyhole className="h-4 w-4" />
                 Documents with a longer life
               </p>
-              <h1 className="max-w-3xl text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
-                Design once,  use indefinitely
+              <h1 className="max-w-3xl text-5xl font-semibold leading-[1.05] line-height-[1.5] tracking-tight sm:text-6xl lg:text-7xl">
+                Design once, <br /> use <i>Forever</i>
               </h1>
               <p className="mt-8 max-w-2xl text-lg leading-8 text-slate-300 sm:text-xl">
                 Build a dependable document system for your organization. Create

@@ -23,7 +23,7 @@ export function Login() {
       navigate("/dashboard");
     } else {
       setError(
-        "Invalid credentials. Use the demo email for the selected role and password admin123.",
+        "Invalid credentials.",
       );
     }
   };
@@ -85,7 +85,7 @@ export function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="focus:ring-[#0054a6] focus:border-[#0054a6] block w-full pl-10 sm:text-sm border-slate-300 rounded-md py-2 border"
-                  placeholder="admin@example.com"
+                  placeholder="email"
                 />
               </div>
             </div>
@@ -110,7 +110,7 @@ export function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="focus:ring-[#0054a6] focus:border-[#0054a6] block w-full pl-10 sm:text-sm border-slate-300 rounded-md py-2 border"
-                  placeholder="admin123"
+                  placeholder="password"
                 />
               </div>
             </div>

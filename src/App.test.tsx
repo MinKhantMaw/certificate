@@ -30,7 +30,7 @@ describe("document routes", () => {
 
     await renderAt("/", () =>
       expect(window.document.body.textContent).toContain(
-        "Design once,  use indefinitely",
+        "Design once,  use Forever",
       ),
     );
 
