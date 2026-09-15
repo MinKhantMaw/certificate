@@ -10,8 +10,8 @@ export function Dashboard() {
   const [imports, setImports] = useState<ImportBatch[]>([]);
 
   useEffect(() => {
-    setCerts(storage.getDocuments());
-    setImports(storage.getImportBatches());
+    void storage.initDocuments().then(setCerts);
+    void storage.initImportBatches().then(setImports);
   }, []);
 
   const totalCerts = certs.length;

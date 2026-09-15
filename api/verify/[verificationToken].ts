@@ -1,63 +1,45 @@
-interface VercelRequest {
+import { parseJson, query, serverError } from '../_lib/db';
+
+interface Request {
   method?: string;
   query: Record<string, string | string[] | undefined>;
 }
 
-interface VercelResponse {
-  status: (code: number) => VercelResponse;
+interface Response {
+  status: (code: number) => Response;
   json: (body: unknown) => void;
 }
 
-const documents = [
-  {
-    id: 'DOC-2026-000001', documentNumber: 'DOC-2026-000001',
-    verificationToken: '00000000-0000-4000-8000-000000000001', recipientName: 'Alice Johnson',
-    documentTitle: 'Document of Completion', courseName: 'Advanced React Patterns',
-    issueDate: '2026-08-15', organization: 'Frontend Masters', documentType: 'Completion',
-    email: 'alice@example.com', status: 'VALID', createdAt: '2026-08-15T00:00:00.000Z',
-  },
-  {
-    id: 'DOC-2026-000002', documentNumber: 'DOC-2026-000002',
-    verificationToken: '00000000-0000-4000-8000-000000000002', recipientName: 'Bob Smith',
-    documentTitle: 'Professional Certification', courseName: 'Fullstack Web Development',
-    issueDate: '2026-08-10', organization: 'Tech Academy', documentType: 'Professional',
-    email: 'bob@example.com', status: 'VALID', createdAt: '2026-08-10T00:00:00.000Z',
-  },
-  {
-    id: 'DOC-2026-000003', documentNumber: 'DOC-2026-000003',
-    verificationToken: '00000000-0000-4000-8000-000000000003', recipientName: 'Charlie Davis',
-    documentTitle: 'Document of Attendance', courseName: 'UI/UX Design Workshop',
-    issueDate: '2026-08-01', organization: 'Design Institute', documentType: 'Attendance',
-    email: 'charlie@example.com', status: 'REVOKED', createdAt: '2026-08-01T00:00:00.000Z',
-  },
-  {
-    id: 'DOC-2026-000004', documentNumber: 'DOC-2026-000004',
-    verificationToken: '00000000-0000-4000-8000-000000000004', recipientName: 'Diana Prince',
-    documentTitle: 'Master Certification', courseName: 'Cloud Architecture',
-    issueDate: '2026-07-20', organization: 'Cloud Providers Inc', documentType: 'Master',
-    email: 'diana@example.com', status: 'VALID', createdAt: '2026-07-20T00:00:00.000Z',
-  },
-  {
-    id: 'DOC-2026-000005', documentNumber: 'DOC-2026-000005',
-    verificationToken: '00000000-0000-4000-8000-000000000005', recipientName: 'Ethan Hunt',
-    documentTitle: 'Document of Excellence', courseName: 'Cybersecurity Fundamentals',
-    issueDate: '2026-07-15', organization: 'Security Agency', documentType: 'Excellence',
-    email: 'ethan@example.com', status: 'VALID', createdAt: '2026-07-15T00:00:00.000Z',
-  },
-];
+export default async function handler(req: Request, res: Response) {
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  const value = req.query.verificationToken;
+  const token = decodeURIComponent(Array.isArray(value) ? value[0] || '' : value || '').trim();
+  if (!token) return res.status(400).json({ error: 'Verification token is required.' });
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  try {
+    const rows = await query<Record<string, unknown>>(
+      'SELECT document_number, short_id, verification_token, recipient_name, document_title, course_name, issue_date, organization, document_type, status, dynamic_data, created_at FROM documents WHERE verification_token = ? AND deleted_at IS NULL',
+      [token],
+    );
+    const document = rows[0];
+    if (!document) return res.status(404).json({ error: 'Document not found.' });
+    return res.status(200).json({
+      success: true,
+      id: document.short_id,
+      documentNumber: document.document_number,
+      shortId: document.short_id,
+      verificationToken: document.verification_token,
+      recipientName: document.recipient_name,
+      documentTitle: document.document_title,
+      courseName: document.course_name,
+      issueDate: document.issue_date,
+      organization: document.organization,
+      documentType: document.document_type,
+      status: document.status,
+      dynamicData: parseJson(document.dynamic_data, {}),
+      createdAt: document.created_at,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: serverError(error) });
   }
-
-  const queryToken = req.query.verificationToken;
-  const token = Array.isArray(queryToken) ? queryToken[0] : queryToken;
-  const document = documents.find(item => item.verificationToken === token);
-
-  if (!document) {
-    return res.status(404).json({ error: 'Document not found' });
-  }
-
-  return res.status(200).json(document);
 }

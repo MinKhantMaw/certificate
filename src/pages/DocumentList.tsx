@@ -108,10 +108,12 @@ export function DocumentList() {
   const [slideIndex, setSlideIndex] = useState(0);
   const [exportDocuments, setExportDocuments] = useState<Document[]>([]);
   const [exporting, setExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
   const [exportError, setExportError] = useState("");
 
   useEffect(() => {
-    loadCerts();
+    setCerts(storage.getDocuments());
+    void (storage.initDocuments?.() || Promise.resolve(storage.getDocuments())).then(setCerts);
     storage.initTemplates().then((loadedTemplates) => {
       setTemplates(loadedTemplates);
       setTemplateId(
@@ -233,6 +235,7 @@ export function DocumentList() {
     let active = true;
     const exportImages = async () => {
       setExporting(true);
+      setExportProgress(0);
       setExportError("");
       try {
         await new Promise<void>((resolve) => window.setTimeout(resolve, 100));
@@ -244,7 +247,7 @@ export function DocumentList() {
           ].map((node) => [node.dataset.documentPreview, node]),
         );
         const zip = new JSZip();
-        for (const document of exportDocuments) {
+        for (const [index, document] of exportDocuments.entries()) {
           const node = nodes.get(document.id);
           if (!node)
             throw new Error(
@@ -255,6 +258,7 @@ export function DocumentList() {
             `${document.documentNumber || document.id}.png`,
             await (await fetch(dataUrl)).blob(),
           );
+          setExportProgress(Math.round(((index + 1) / exportDocuments.length) * 100));
         }
         const blob = await zip.generateAsync({ type: "blob" });
         const link = window.document.createElement("a");
@@ -272,6 +276,7 @@ export function DocumentList() {
       } finally {
         if (active) {
           setExporting(false);
+          setExportProgress(0);
           setExportDocuments([]);
         }
       }
@@ -409,11 +414,11 @@ export function DocumentList() {
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-slate-500">Download images:</span>
-            {/* {[50, 100].map((count) => (
+            {[50, 100].map((count) => (
               <button key={count} type="button" onClick={() => startBulkDownload(count as 50 | 100)} disabled={exporting} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">
                 <Download className="h-4 w-4" /> {count}
               </button>
-            ))} */}
+            ))}
             <button
               type="button"
               onClick={() => startBulkDownload("ALL")}
@@ -427,7 +432,7 @@ export function DocumentList() {
       )}
       {exporting && (
         <p className="text-sm text-slate-500">
-          Preparing certificate images...
+          Preparing certificate images... {exportProgress}%
         </p>
       )}
       {exportError && (

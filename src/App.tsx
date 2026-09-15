@@ -74,7 +74,7 @@ const Landing = lazy(() =>
 
 export default function App() {
   useEffect(() => {
-    storage.initDemoData();
+    void Promise.all([storage.initTemplates(), storage.initDocuments()]);
   }, []);
 
   return (

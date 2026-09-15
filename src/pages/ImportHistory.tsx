@@ -11,7 +11,7 @@ export function ImportHistory() {
   const [pageSize, setPageSize] = useState(5);
 
   useEffect(() => {
-    setImports(storage.getImportBatches());
+    void storage.initImportBatches().then(setImports);
     storage.initTemplates().then(setTemplates);
   }, []);
 

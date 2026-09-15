@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { toPng } from "html-to-image";
+import { jsPDF } from "jspdf";
 import { storage } from "../services/storage";
 import { Document, DocumentTemplate } from "../types";
 import { DocumentPreview } from "../components/DocumentPreview";
@@ -48,9 +49,9 @@ function PrintDocumentButton({
     try {
       const dataUrl = await toPng(node, { cacheBust: true, pixelRatio: 2 });
       const link = window.document.createElement("a");
-      link.download = `${document.documentNumber || document.id}.png`;
-      link.href = dataUrl;
-      link.click();
+      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      pdf.addImage(dataUrl, "PNG", 0, 0, 297, 210);
+      pdf.save(`${document.documentNumber || document.id}.pdf`);
     } catch {
       setDownloadError("Unable to download the document image.");
     } finally {
@@ -67,7 +68,7 @@ function PrintDocumentButton({
         className="flex items-center px-4 py-2 bg-[#0054a6] text-white rounded-lg hover:bg-[#003f82] font-medium disabled:cursor-not-allowed disabled:bg-blue-300"
       >
         <Download className="w-4 h-4 mr-2" />
-        {downloading ? "Preparing image..." : ready ? "Download Image" : "Preparing QR..."}
+        {downloading ? "Preparing PDF..." : ready ? "Download Image / PDF" : "Preparing QR..."}
       </button>
       {downloadError && <span role="alert" className="text-xs text-red-600">{downloadError}</span>}
     </div>
@@ -123,7 +124,11 @@ export function DocumentDetail() {
   const [actionError, setActionError] = useState("");
   useEffect(() => {
     if (id) {
-      const document = storage.getDocumentById(id) || null;
+      const initialDocument = storage.getDocumentById(id) || null;
+      setCert(initialDocument);
+      const hydrate = storage.initDocuments?.() || Promise.resolve(storage.getDocuments?.() || []);
+      void hydrate.then((documents) => {
+      const document = documents.find((item) => item.id === id || item.documentNumber === id || item.shortId === id) || initialDocument;
       setCert(document);
       if (document?.documentTemplateId) {
         setTemplateLoading(true);
@@ -133,6 +138,7 @@ export function DocumentDetail() {
       } else {
         setTemplate(null);
       }
+      });
     }
   }, [id]);
 

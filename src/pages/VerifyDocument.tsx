@@ -21,12 +21,6 @@ export function VerifyDocument() {
         setCert(null);
         return;
       }
-      const localDocument = storage.getDocumentByToken(decodedToken);
-      if (localDocument) {
-        setCert(localDocument);
-        return;
-      }
-
       try {
         const response = await fetch(
           `/api/verify/${encodeURIComponent(decodedToken)}`,
@@ -36,11 +30,11 @@ export function VerifyDocument() {
           return;
         }
       } catch {
-        // Fall back to local prototype data when the API is unavailable locally.
+        const localDocument = storage.isDocumentDeleted(decodedToken)
+          ? undefined
+          : storage.getDocumentByToken(decodedToken);
+        setCert(localDocument || null);
       }
-
-      storage.initDemoData();
-      setCert(storage.getDocumentByToken(decodedToken) || null);
     };
 
     verifyDocument().finally(() => setLoading(false));

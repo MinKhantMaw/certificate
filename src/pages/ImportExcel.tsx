@@ -100,7 +100,6 @@ export function ImportExcel() {
         createdAt: timestamp,
         updatedAt: timestamp,
       };
-      storage.saveImportBatch(nextBatch);
       setBatch(nextBatch);
       setStep("COMPLETED");
       if (!documents.length) throw new Error("No documents were generated.");

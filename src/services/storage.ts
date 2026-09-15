@@ -1,6 +1,7 @@
 import { AuditLog, Document, DocumentApproval, DocumentTemplate, ImportedRow, ImportBatch, ImportRecord, PendingImportTrainee, User, UserRole } from '../types';
 import { generateShortDocumentId, getVerificationUrl } from '../utils';
 import { requestEncryptedQr } from './encryptLink';
+import { api, apiEnabled } from './api';
 
 const createUniqueShortId = (taken: Set<string>): string => {
   for (let attempt = 0; attempt < 10; attempt += 1) {
@@ -14,6 +15,9 @@ const KEYS = { users: 'cms_users', templates: 'cms_templates', documents: 'cms_d
 let templateCache: DocumentTemplate[] = [];
 let templateInitPromise: Promise<DocumentTemplate[]> | null = null;
 let templatesInitialized = false;
+let documentCache: Document[] = [];
+let documentsInitialized = false;
+let importBatchCache: ImportBatch[] = [];
 const read = <T>(key: string, fallback: T): T => { try { return JSON.parse(localStorage.getItem(key) || '') as T; } catch { return fallback; } };
 const write = <T>(key: string, value: T) => localStorage.setItem(key, JSON.stringify(value));
 const now = () => new Date().toISOString();
@@ -40,8 +44,14 @@ function migrateLegacyDocuments() {
 }
 
 export const storage = {
+  loginRemote: async (email: string, password: string): Promise<User> => {
+    const result = await api.login(email, password);
+    write(KEYS.auth, result.user);
+    write(KEYS.users, [result.user]);
+    return result.user;
+  },
   login: (email: string, role: UserRole = 'ADMIN'): User => { const user = storage.getUsers().find(item => item.email === email) || { id: crypto.randomUUID(), email, name: email.split('@')[0], role }; write(KEYS.auth, user); return user; },
-  logout: () => localStorage.removeItem(KEYS.auth),
+  logout: () => { if (apiEnabled) void api.logout().catch(() => undefined); localStorage.removeItem(KEYS.auth); },
   getUser: (): User | null => read<User | null>(KEYS.auth, null),
   getUsers: (): User[] => read<User[]>(KEYS.users, []),
   getUsersByRole: (role: UserRole) => storage.getUsers().filter(user => user.role === role),
@@ -53,7 +63,16 @@ export const storage = {
   initTemplates: async () => {
     if (templatesInitialized) return templateCache;
     if (templateInitPromise) return templateInitPromise;
-    templateInitPromise = Promise.resolve().then(() => {
+    templateInitPromise = apiEnabled ? api.templates().then((templates) => {
+      templateCache = templates;
+      write(KEYS.templates, templates);
+      templatesInitialized = true;
+      return templateCache;
+    }).catch(() => {
+      templateCache = read<DocumentTemplate[]>(KEYS.templates, []);
+      templatesInitialized = true;
+      return templateCache;
+    }) : Promise.resolve().then(() => {
       templateCache = read<DocumentTemplate[]>(KEYS.templates, []);
       templatesInitialized = true;
       return templateCache;
@@ -65,11 +84,13 @@ export const storage = {
     }
   },
   saveTemplate: async (template: DocumentTemplate) => {
+    if (apiEnabled) try { template = await api.createTemplate(template); } catch { /* local fallback for offline mode */ }
     templateCache = [...templateCache, template];
     write(KEYS.templates, templateCache);
     templatesInitialized = true;
   },
   updateTemplate: async (template: DocumentTemplate) => {
+    if (apiEnabled) try { template = await api.updateTemplate(template); } catch { /* local fallback for offline mode */ }
     templateCache = templateCache.map(item => item.id === template.id ? template : item);
     write(KEYS.templates, templateCache);
     templatesInitialized = true;
@@ -78,15 +99,24 @@ export const storage = {
     if (storage.getDocuments().some(document => document.documentTemplateId === id)) {
       throw new Error('Cannot delete a template used by existing documents.');
     }
+    if (apiEnabled) try { await api.deleteTemplate(id); } catch (error) { if (error instanceof Error && !error.message.includes('Failed to fetch')) throw error; }
     templateCache = templateCache.filter(item => item.id !== id);
     write(KEYS.templates, templateCache);
     templatesInitialized = true;
   },
   getImportBatches: (): ImportBatch[] => {
+    if (importBatchCache.length) return importBatchCache;
     const batches = read<(ImportBatch & { trainingProgramId?: string; reviewedBy?: string; reviewedAt?: string; rejectionReason?: string })[]>(KEYS.importBatches, []);
     const migrated = batches.map(({ trainingProgramId: _trainingProgramId, reviewedBy: _reviewedBy, reviewedAt: _reviewedAt, rejectionReason: _rejectionReason, ...batch }) => ({ ...batch, status: "COMPLETED" as const }));
     if (JSON.stringify(batches) !== JSON.stringify(migrated)) write(KEYS.importBatches, migrated);
-    return migrated.sort((a, b) => (b.submittedAt || b.createdAt).localeCompare(a.submittedAt || a.createdAt));
+    importBatchCache = migrated.sort((a, b) => (b.submittedAt || b.createdAt).localeCompare(a.submittedAt || a.createdAt));
+    return importBatchCache;
+  },
+  initImportBatches: async () => {
+    if (apiEnabled) {
+      try { importBatchCache = await api.importBatches(); return importBatchCache; } catch { /* offline fallback */ }
+    }
+    return storage.getImportBatches();
   },
   getImportBatch: (id: string) => storage.getImportBatches().find(item => item.id === id),
   saveImportBatch: (batch: ImportBatch) => write(KEYS.importBatches, [...storage.getImportBatches(), batch]),
@@ -98,6 +128,14 @@ export const storage = {
     const template = storage.getTemplates().find(item => item.id === templateId && item.status === 'ACTIVE');
     if (!template) throw new Error('Select an active document template before generation.');
     if (!rows.length || rows.some(row => !row.isValid)) throw new Error('All imported rows must be valid before generation.');
+    if (apiEnabled) try {
+      const result = await api.generateDocuments({ templateId, fileName: 'import.xlsx', uploadedBy: storage.getUser()?.id, rows });
+      documentCache = [...result.documents, ...documentCache];
+      write(KEYS.documents, documentCache);
+      return result.documents;
+    } catch (error) {
+      if (typeof window !== 'undefined' && !navigator.onLine) throw error;
+    }
     const timestamp = now();
     const existingDocuments = storage.getDocuments();
     const nextDocumentIndex = existingDocuments.length + 1;
@@ -122,8 +160,9 @@ export const storage = {
     return documents;
   },
   getDocuments: (): Document[] => {
+    if (documentsInitialized) return documentCache;
     migrateLegacyDocuments();
-    const documents = read<Document[]>(KEYS.documents, []);
+    const documents = documentCache.length ? documentCache : read<Document[]>(KEYS.documents, []);
     const approvals = storage.getApprovals();
     const users = storage.getUsers();
     const approvedApprovalByDocument = new Map(
@@ -150,19 +189,30 @@ export const storage = {
       return updated;
     });
     if (changed) write(KEYS.documents, migrated);
-    return migrated.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    documentCache = migrated.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return documentCache;
+  },
+  initDocuments: async () => {
+    if (apiEnabled) try {
+      documentCache = await api.documents();
+      write(KEYS.documents, documentCache);
+    } catch { documentCache = storage.getDocuments(); }
+    documentsInitialized = true;
+    return documentCache;
   },
   getDocumentById: (id: string) => storage.getDocuments().find(item => item.id === id || item.documentNumber === id || item.shortId === id),
   getDocumentByToken: (token: string) => storage.getDocuments().find(item => item.verificationToken === decodeURIComponent(token).trim()),
   isDocumentDeleted: (token: string) => read<string[]>(DELETED_DOCUMENT_TOKENS_KEY, []).includes(decodeURIComponent(token).trim()),
-  saveDocuments: (documents: Document[]) => write(KEYS.documents, [...storage.getDocuments(), ...documents]),
-  updateDocument: (document: Document) => write(KEYS.documents, storage.getDocuments().map(item => item.id === document.id ? document : item)),
-  updateDocumentStatus: (id: string, status: Document['status']) => write(KEYS.documents, storage.getDocuments().map(item => item.id === id ? { ...item, status } : item)),
+  saveDocuments: (documents: Document[]) => { documentCache = [...storage.getDocuments(), ...documents]; write(KEYS.documents, documentCache); },
+  updateDocument: (document: Document) => { documentCache = storage.getDocuments().map(item => item.id === document.id ? document : item); write(KEYS.documents, documentCache); },
+  updateDocumentStatus: (id: string, status: Document['status']) => { void api.updateDocumentStatus(id, status).then((document) => { documentCache = storage.getDocuments().map(item => item.id === document.id ? document : item); write(KEYS.documents, documentCache); }).catch(() => { documentCache = storage.getDocuments().map(item => item.id === id ? { ...item, status } : item); write(KEYS.documents, documentCache); }); },
   deleteDocument: (id: string) => {
     const documents = storage.getDocuments();
     const document = documents.find(item => item.id === id || item.documentNumber === id || item.shortId === id);
     if (!document) throw new Error('Document not found.');
-    write(KEYS.documents, documents.filter(item => item.id !== document.id));
+    void api.deleteDocument(document.id).catch(() => undefined);
+    documentCache = documents.filter(item => item.id !== document.id);
+    write(KEYS.documents, documentCache);
     write(KEYS.approvals, storage.getApprovals().filter(approval => approval.documentId !== document.id));
     const deletedTokens = read<string[]>(DELETED_DOCUMENT_TOKENS_KEY, []);
     if (!deletedTokens.includes(document.verificationToken)) {

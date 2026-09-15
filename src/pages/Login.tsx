@@ -10,19 +10,13 @@ export function Login() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = (e: FormEvent) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
-    const demo =
-      role === "ADMIN"
-        ? email === "admin@example.com"
-        : role === "TRAINER"
-          ? email === "trainer@example.com"
-          : email === "approver@example.com";
-    if (demo && password === "admin123") {
-      storage.login(email, role);
+    try {
+      await storage.loginRemote(email, password);
       navigate("/dashboard");
-    } else {
-      setError("Invalid credentials.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Invalid credentials.");
     }
   };
 
