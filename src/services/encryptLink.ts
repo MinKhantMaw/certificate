@@ -48,7 +48,8 @@ export async function requestEncryptedQr(document: Document): Promise<EncryptedQ
       });
 
       if (response.ok) {
-        const payload = await response.json() as Partial<EncryptedQr> & { qr_url?: string; qrUrl?: string; encryptedQrUrl?: string; url?: string };
+        const payload = await response.json() as Partial<EncryptedQr> & { success?: boolean; qr_url?: string; qrUrl?: string; encryptedQrUrl?: string; url?: string };
+        if (payload.success === false) return { qrUrl: document.verificationUrl, token: document.verificationToken };
         const qrUrl = payload.qr_url || payload.qrUrl || payload.encryptedQrUrl || payload.url;
         const token = payload.token || document.verificationToken;
         if (qrUrl && token) {

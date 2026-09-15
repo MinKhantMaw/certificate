@@ -54,9 +54,7 @@ export function DocumentPreview({
       .then((templates) => {
         if (!active) return;
         const nextTemplate = document.documentTemplateId
-          ? templates.find(
-              (item) => item.id === document.documentTemplateId,
-            )
+          ? templates.find((item) => item.id === document.documentTemplateId)
           : undefined;
         setTemplate(nextTemplate);
         setLoadingTemplate(false);
@@ -83,10 +81,7 @@ export function DocumentPreview({
 
   if (template?.layout) {
     return (
-      <DynamicDocumentPreview
-        document={document}
-        layout={template.layout}
-      />
+      <DynamicDocumentPreview document={document} layout={template.layout} />
     );
   }
 
@@ -94,6 +89,7 @@ export function DocumentPreview({
     <div
       className="relative mx-auto aspect-[1.414/1] min-w-[800px] w-full max-w-[1123px] overflow-hidden bg-white font-sans text-[#333] shadow-lg"
       id="printable-document"
+      data-document-preview={document.id}
     >
       {template?.previewImage && (
         <img
@@ -155,8 +151,7 @@ export function DocumentPreview({
           </span>
         </p>
         <p className="mt-[2.2%] max-w-[85%] text-[clamp(8px,1.1vw,13px)]">
-          For successfully completing the{" "}
-          <strong>{document.courseName}</strong>{" "}
+          For successfully completing the <strong>{document.courseName}</strong>{" "}
           <span>({document.documentType})</span>.
         </p>
         <h3 className="mt-[2%] text-[clamp(10px,1.4vw,16px)] font-bold">
@@ -274,6 +269,7 @@ function DynamicDocumentPreview({
       id="printable-document"
       className="relative mx-auto min-w-[800px] w-full max-w-[1123px] overflow-hidden bg-white shadow-lg"
       style={{ aspectRatio }}
+      data-document-preview={document.id}
     >
       {layout.background && (
         <img
@@ -289,7 +285,7 @@ function DynamicDocumentPreview({
       )}
       {layout.elements.map((element) => {
         const style = styleFor(element);
-        if (element.type === "text")
+        if (element.type === "text" || element.type === "plain_text")
           return (
             <div
               key={element.id}
@@ -299,6 +295,7 @@ function DynamicDocumentPreview({
                 fontFamily: element.style?.fontFamily,
                 fontSize: `${(element.style?.fontSize || 16) * (layout.canvas.width / 1123)}px`,
                 fontWeight: element.style?.fontWeight,
+                fontStyle: element.style?.fontStyle,
                 lineHeight: element.style?.lineHeight || 1.2,
                 textAlign: element.style?.align,
                 display: "flex",
@@ -314,7 +311,9 @@ function DynamicDocumentPreview({
                 padding: 8,
               }}
             >
-              {resolveTemplateValue(element, data)}
+              {element.type === "plain_text"
+                ? element.content || ""
+                : resolveTemplateValue(element, data)}
             </div>
           );
         if (element.type === "shape")

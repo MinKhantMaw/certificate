@@ -1,12 +1,29 @@
-import { useState, useEffect } from 'react';
-import { storage } from '../services/storage';
-import { Document, DocumentTemplate, ImportBatch } from '../types';
-import { Link } from 'react-router-dom';
-import { Search, Eye, ShieldAlert, Trash2, FileBadge, Filter, ArrowUpDown, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
-import { getTemplateKeys, resolveTemplateValue } from '../utils';
-import { ConfirmModal } from '../components/ConfirmModal';
+import { useState, useEffect } from "react";
+import { toPng } from "html-to-image";
+import JSZip from "jszip";
+import { storage } from "../services/storage";
+import { Document, DocumentTemplate, ImportBatch } from "../types";
+import { Link } from "react-router-dom";
+import {
+  Search,
+  Eye,
+  ShieldAlert,
+  Trash2,
+  FileBadge,
+  Filter,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  Upload,
+  Download,
+  LayoutList,
+  GalleryHorizontalEnd,
+} from "lucide-react";
+import { getTemplateKeys, resolveTemplateValue } from "../utils";
+import { ConfirmModal } from "../components/ConfirmModal";
+import { DocumentPreview } from "../components/DocumentPreview";
 
-type SortKey = 'status' | string;
+type SortKey = "status" | string;
 
 type DynamicColumn = {
   key: string;
@@ -15,49 +32,93 @@ type DynamicColumn = {
 
 export function humanizeTemplateKey(key: string): string {
   return key
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-export function getDynamicColumns(template?: DocumentTemplate): DynamicColumn[] {
-  return getTemplateKeys(template?.layout).map((key) => ({ key, label: humanizeTemplateKey(key) }));
+export function getDynamicColumns(
+  template?: DocumentTemplate,
+): DynamicColumn[] {
+  return getTemplateKeys(template?.layout).map((key) => ({
+    key,
+    label: humanizeTemplateKey(key),
+  }));
 }
 
 export function getDynamicValue(document: Document, key: string): string {
-  return resolveTemplateValue({ id: key, type: 'text', key, x: 0, y: 0, width: 0, height: 0, rotation: 0 }, document.dynamicData || {});
+  return resolveTemplateValue(
+    {
+      id: key,
+      type: "text",
+      key,
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+      rotation: 0,
+    },
+    document.dynamicData || {},
+  );
 }
 
-export function getDefaultTemplateId(templates: DocumentTemplate[], importBatches: ImportBatch[]): string {
-  const activeTemplates = templates.filter((template) => template.status === 'ACTIVE');
-  const activeTemplateIds = new Set(activeTemplates.map((template) => template.id));
+export function getDefaultTemplateId(
+  templates: DocumentTemplate[],
+  importBatches: ImportBatch[],
+): string {
+  const activeTemplates = templates.filter(
+    (template) => template.status === "ACTIVE",
+  );
+  const activeTemplateIds = new Set(
+    activeTemplates.map((template) => template.id),
+  );
   const recentImport = [...importBatches]
-    .filter((batch) => batch.templateId && activeTemplateIds.has(batch.templateId))
-    .sort((first, second) => (second.submittedAt || second.createdAt).localeCompare(first.submittedAt || first.createdAt))[0];
+    .filter(
+      (batch) => batch.templateId && activeTemplateIds.has(batch.templateId),
+    )
+    .sort((first, second) =>
+      (second.submittedAt || second.createdAt).localeCompare(
+        first.submittedAt || first.createdAt,
+      ),
+    )[0];
   if (recentImport?.templateId) return recentImport.templateId;
-  return [...activeTemplates]
-    .sort((first, second) => second.createdAt.localeCompare(first.createdAt))[0]?.id || '';
+  return (
+    [...activeTemplates].sort((first, second) =>
+      second.createdAt.localeCompare(first.createdAt),
+    )[0]?.id || ""
+  );
 }
 
 export function DocumentList() {
   const [certs, setCerts] = useState<Document[]>([]);
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
-  const [templateId, setTemplateId] = useState('');
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'VALID' | 'REVOKED'>('ALL');
-  const [sortKey, setSortKey] = useState<SortKey>('status');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [templateId, setTemplateId] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "VALID" | "REVOKED">(
+    "ALL",
+  );
+  const [sortKey, setSortKey] = useState<SortKey>("status");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [revokeId, setRevokeId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [actionError, setActionError] = useState('');
+  const [actionError, setActionError] = useState("");
+  const [view, setView] = useState<"table" | "slides">("table");
+  const [slideIndex, setSlideIndex] = useState(0);
+  const [exportDocuments, setExportDocuments] = useState<Document[]>([]);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
 
   useEffect(() => {
     loadCerts();
     storage.initTemplates().then((loadedTemplates) => {
       setTemplates(loadedTemplates);
-      setTemplateId((currentTemplateId) => currentTemplateId || getDefaultTemplateId(loadedTemplates, storage.getImportBatches()));
+      setTemplateId(
+        (currentTemplateId) =>
+          currentTemplateId ||
+          getDefaultTemplateId(loadedTemplates, storage.getImportBatches()),
+      );
     });
   }, []);
 
@@ -72,11 +133,15 @@ export function DocumentList() {
   const confirmRevoke = () => {
     if (!revokeId) return;
     try {
-      storage.updateDocumentStatus(revokeId, 'REVOKED');
+      storage.updateDocumentStatus(revokeId, "REVOKED");
       loadCerts();
       setRevokeId(null);
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Unable to revoke the document.');
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "Unable to revoke the document.",
+      );
     }
   };
 
@@ -86,50 +151,70 @@ export function DocumentList() {
       storage.deleteDocument(deleteId);
       loadCerts();
       setDeleteId(null);
-      setActionError('');
+      setActionError("");
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Unable to delete the document.');
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "Unable to delete the document.",
+      );
     }
   };
 
-  const selectedTemplate = templates.find((template) => template.id === templateId);
+  const selectedTemplate = templates.find(
+    (template) => template.id === templateId,
+  );
   const dynamicColumns = getDynamicColumns(selectedTemplate);
 
   const selectTemplate = (nextTemplateId: string) => {
     setTemplateId(nextTemplateId);
-    setSearch('');
-    setStatusFilter('ALL');
-    setSortKey('status');
-    setSortDirection('desc');
+    setSearch("");
+    setStatusFilter("ALL");
+    setSortKey("status");
+    setSortDirection("desc");
     setPage(1);
   };
 
   const changeSort = (nextKey: SortKey) => {
     if (sortKey === nextKey) {
-      setSortDirection((direction) => direction === 'asc' ? 'desc' : 'asc');
+      setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(nextKey);
-      setSortDirection(nextKey === 'status' ? 'desc' : 'asc');
+      setSortDirection(nextKey === "status" ? "desc" : "asc");
     }
     setPage(1);
   };
 
-  const templateCerts = certs.filter((document) => document.documentTemplateId === templateId);
-  const filteredCerts = templateCerts.filter(c => {
+  const templateCerts = certs.filter(
+    (document) => document.documentTemplateId === templateId,
+  );
+  const filteredCerts = templateCerts.filter((c) => {
     const searchValue = search.trim().toLowerCase();
-    const matchesSearch = !searchValue || dynamicColumns.some((column) => getDynamicValue(c, column.key).toLowerCase().includes(searchValue));
-    const matchesStatus = statusFilter === 'ALL' || c.status === statusFilter;
+    const matchesSearch =
+      !searchValue ||
+      dynamicColumns.some((column) =>
+        getDynamicValue(c, column.key).toLowerCase().includes(searchValue),
+      );
+    const matchesStatus = statusFilter === "ALL" || c.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const sortedCerts = [...filteredCerts].sort((first, second) => {
-    const firstValue = sortKey === 'status' ? first.status : getDynamicValue(first, sortKey);
-    const secondValue = sortKey === 'status' ? second.status : getDynamicValue(second, sortKey);
-    const comparison = firstValue.localeCompare(secondValue, undefined, { numeric: true, sensitivity: 'base' });
-    return sortDirection === 'asc' ? comparison : -comparison;
+    const firstValue =
+      sortKey === "status" ? first.status : getDynamicValue(first, sortKey);
+    const secondValue =
+      sortKey === "status" ? second.status : getDynamicValue(second, sortKey);
+    const comparison = firstValue.localeCompare(secondValue, undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+    return sortDirection === "asc" ? comparison : -comparison;
   });
   const totalPages = Math.max(1, Math.ceil(sortedCerts.length / pageSize));
-  const visibleCerts = sortedCerts.slice((page - 1) * pageSize, page * pageSize);
+  const visibleCerts = sortedCerts.slice(
+    (page - 1) * pageSize,
+    page * pageSize,
+  );
 
   useEffect(() => {
     setPage(1);
@@ -139,6 +224,64 @@ export function DocumentList() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
+  useEffect(() => {
+    setSlideIndex(0);
+  }, [templateId, search, statusFilter, sortKey, sortDirection]);
+
+  useEffect(() => {
+    if (!exportDocuments.length) return;
+    let active = true;
+    const exportImages = async () => {
+      setExporting(true);
+      setExportError("");
+      try {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 100));
+        const nodes = new Map(
+          [
+            ...window.document.querySelectorAll<HTMLElement>(
+              "[data-document-preview]",
+            ),
+          ].map((node) => [node.dataset.documentPreview, node]),
+        );
+        const zip = new JSZip();
+        for (const document of exportDocuments) {
+          const node = nodes.get(document.id);
+          if (!node)
+            throw new Error(
+              `Unable to render ${document.documentNumber || document.id}.`,
+            );
+          const dataUrl = await toPng(node, { cacheBust: true, pixelRatio: 1 });
+          zip.file(
+            `${document.documentNumber || document.id}.png`,
+            await (await fetch(dataUrl)).blob(),
+          );
+        }
+        const blob = await zip.generateAsync({ type: "blob" });
+        const link = window.document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `${selectedTemplate?.name || "documents"}-images.zip`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      } catch (reason) {
+        if (active)
+          setExportError(
+            reason instanceof Error
+              ? reason.message
+              : "Unable to create the ZIP download.",
+          );
+      } finally {
+        if (active) {
+          setExporting(false);
+          setExportDocuments([]);
+        }
+      }
+    };
+    void exportImages();
+    return () => {
+      active = false;
+    };
+  }, [exportDocuments, selectedTemplate?.name]);
+
   const sortButton = (label: string, key: SortKey) => (
     <button
       type="button"
@@ -146,9 +289,21 @@ export function DocumentList() {
       className="inline-flex items-center gap-1 text-left hover:text-blue-700"
     >
       {label}
-      <ArrowUpDown className={`h-3.5 w-3.5 ${sortKey === key ? 'text-blue-600' : 'text-gray-400'}`} />
+      <ArrowUpDown
+        className={`h-3.5 w-3.5 ${sortKey === key ? "text-blue-600" : "text-gray-400"}`}
+      />
     </button>
   );
+
+  const startBulkDownload = (count: 50 | 100 | "ALL") => {
+    const documents =
+      count === "ALL" ? sortedCerts : sortedCerts.slice(0, count);
+    if (!documents.length)
+      return setExportError("There are no certificates to download.");
+    setExportDocuments(documents);
+  };
+
+  const slideDocument = sortedCerts[slideIndex];
 
   return (
     <div className="space-y-6">
@@ -170,9 +325,19 @@ export function DocumentList() {
           onCancel={() => setDeleteId(null)}
         />
       )}
-      {actionError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</p>}
+      {actionError && (
+        <p
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          {actionError}
+        </p>
+      )}
       <div className="flex justify-end">
-        <Link to="/import" className="inline-flex items-center gap-2 rounded-lg bg-[#0054a6] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#003f82]">
+        <Link
+          to="/import"
+          className="inline-flex items-center gap-2 rounded-lg bg-[#0054a6] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#003f82]"
+        >
           <Upload className="h-4 w-4" /> Upload
         </Link>
       </div>
@@ -185,31 +350,37 @@ export function DocumentList() {
               className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
             >
               <option value="">Select template</option>
-              {templates.filter((template) => template.status === 'ACTIVE').map((template) => (
-                <option key={template.id} value={template.id}>{template.name}</option>
-              ))}
+              {templates
+                .filter((template) => template.status === "ACTIVE")
+                .map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
             </select>
           </label>
           <div className="relative flex-1 max-w-md">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-gray-400" />
-          </div>
-          <input
-            type="text"
-            placeholder="Search visible document fields..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          />
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search visible document fields..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            />
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <Filter className="w-5 h-5 text-gray-400" />
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-            className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg border"
+            onChange={(e) =>
+              setStatusFilter(e.target.value as typeof statusFilter)
+            }
+            className="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg border"
           >
             <option value="ALL">All Status</option>
             <option value="VALID">Valid</option>
@@ -218,6 +389,56 @@ export function DocumentList() {
         </div>
       </div>
 
+      {templateId && sortedCerts.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setView("table")}
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${view === "table" ? "bg-slate-900 text-white" : "border border-slate-300 text-slate-700"}`}
+            >
+              <LayoutList className="h-4 w-4" /> Table
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("slides")}
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${view === "slides" ? "bg-slate-900 text-white" : "border border-slate-300 text-slate-700"}`}
+            >
+              <GalleryHorizontalEnd className="h-4 w-4" /> Slide view
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-slate-500">Download images:</span>
+            {/* {[50, 100].map((count) => (
+              <button key={count} type="button" onClick={() => startBulkDownload(count as 50 | 100)} disabled={exporting} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+                <Download className="h-4 w-4" /> {count}
+              </button>
+            ))} */}
+            <button
+              type="button"
+              onClick={() => startBulkDownload("ALL")}
+              disabled={exporting}
+              className="inline-flex items-center gap-1 rounded-lg bg-[#0054a6] px-3 py-2 font-medium text-white hover:bg-[#003f82] disabled:opacity-50"
+            >
+              <Download className="h-4 w-4" /> All
+            </button>
+          </div>
+        </div>
+      )}
+      {exporting && (
+        <p className="text-sm text-slate-500">
+          Preparing certificate images...
+        </p>
+      )}
+      {exportError && (
+        <p
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          {exportError}
+        </p>
+      )}
+
       {!templateId ? (
         <div className="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center text-gray-500 shadow-sm">
           <FileBadge className="mx-auto mb-4 h-12 w-12 text-gray-300" />
@@ -225,107 +446,198 @@ export function DocumentList() {
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                {dynamicColumns.map((column) => (
-                  <th key={column.key} className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{sortButton(column.label, column.key)}</th>
-                ))}
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{sortButton('Status', 'status')}</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredCerts.length === 0 ? (
-                <tr>
-                  <td colSpan={dynamicColumns.length + 2} className="px-6 py-12 text-center text-gray-500">
-                    <FileBadge className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-                    <p>{dynamicColumns.length ? 'No documents found for this template.' : 'This template has no dynamic fields.'}</p>
-                  </td>
-                </tr>
-              ) : (
-                visibleCerts.map((cert) => (
-                  <tr key={cert.id} className="hover:bg-gray-50 transition-colors">
-                    {dynamicColumns.map((column) => (
-                      <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getDynamicValue(cert, column.key) || '-'}</td>
-                    ))}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        cert.status === 'VALID' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {cert.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-3">
-                        <Link to={`/documents/${cert.id}`} className="text-[#0054a6] hover:text-[#003f82] flex items-center" title="View Detail">
-                          <Eye className="w-4 h-4 mr-1" /> View
-                        </Link>
-                        {cert.status === 'VALID' && (
-                          <button 
-                            onClick={() => handleRevoke(cert.id)} 
-                            className="text-red-600 hover:text-red-900 flex items-center" title="Revoke"
-                          >
-                            <ShieldAlert className="w-4 h-4 mr-1" /> Revoke
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setDeleteId(cert.id)}
-                          className="text-red-600 hover:text-red-900 flex items-center"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" /> Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+          {view === "slides" ? (
+            <div className="space-y-4 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Certificate {slideIndex + 1} of {sortedCerts.length}
+                  </p>
+                  {slideDocument && (
+                    <p className="text-sm text-slate-500">
+                      {slideDocument.recipientName} ·{" "}
+                      {slideDocument.documentNumber || slideDocument.id} ·{" "}
+                      {slideDocument.status}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={slideIndex === 0}
+                    onClick={() => setSlideIndex((current) => current - 1)}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    disabled={slideIndex === sortedCerts.length - 1}
+                    onClick={() => setSlideIndex((current) => current + 1)}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+              {slideDocument && (
+                <div className="overflow-x-auto rounded-lg bg-slate-100 p-4">
+                  <DocumentPreview document={slideDocument} />
+                </div>
               )}
-            </tbody>
-          </table>
-        </div>
-        {sortedCerts.length > 0 && (
-          <div className="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-            <p>
-              Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, sortedCerts.length)} of {sortedCerts.length}
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <label className="flex items-center gap-2">
-                Per page
-                <select
-                  value={pageSize}
-                  onChange={(event) => setPageSize(Number(event.target.value))}
-                  className="rounded-md border border-gray-300 bg-white px-2 py-1"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                </select>
-              </label>
-              <span className="px-2">Page {page} of {totalPages}</span>
-              <button
-                type="button"
-                disabled={page === 1}
-                onClick={() => setPage((current) => current - 1)}
-                className="rounded-md border border-gray-300 p-1.5 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Previous page"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                disabled={page === totalPages}
-                onClick={() => setPage((current) => current + 1)}
-                className="rounded-md border border-gray-300 p-1.5 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Next page"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
             </div>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {dynamicColumns.map((column) => (
+                      <th
+                        key={column.key}
+                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                      >
+                        {sortButton(column.label, column.key)}
+                      </th>
+                    ))}
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      {sortButton("Status", "status")}
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredCerts.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={dynamicColumns.length + 2}
+                        className="px-6 py-12 text-center text-gray-500"
+                      >
+                        <FileBadge className="w-12 h-12 mx-auto text-gray-300 mb-4" />
+                        <p>
+                          {dynamicColumns.length
+                            ? "No documents found for this template."
+                            : "This template has no dynamic fields."}
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    visibleCerts.map((cert) => (
+                      <tr
+                        key={cert.id}
+                        className="hover:bg-gray-50 transition-colors"
+                      >
+                        {dynamicColumns.map((column) => (
+                          <td
+                            key={column.key}
+                            className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                          >
+                            {getDynamicValue(cert, column.key) || "-"}
+                          </td>
+                        ))}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              cert.status === "VALID"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {cert.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex justify-end space-x-3">
+                            <Link
+                              to={`/documents/${cert.id}`}
+                              className="text-[#0054a6] hover:text-[#003f82] flex items-center"
+                              title="View Detail"
+                            >
+                              <Eye className="w-4 h-4 mr-1" /> View
+                            </Link>
+                            {cert.status === "VALID" && (
+                              <button
+                                onClick={() => handleRevoke(cert.id)}
+                                className="text-red-600 hover:text-red-900 flex items-center"
+                                title="Revoke"
+                              >
+                                <ShieldAlert className="w-4 h-4 mr-1" /> Revoke
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setDeleteId(cert.id)}
+                              className="text-red-600 hover:text-red-900 flex items-center"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" /> Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {sortedCerts.length > 0 && (
+            <div className="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <p>
+                Showing {(page - 1) * pageSize + 1}-
+                {Math.min(page * pageSize, sortedCerts.length)} of{" "}
+                {sortedCerts.length}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex items-center gap-2">
+                  Per page
+                  <select
+                    value={pageSize}
+                    onChange={(event) =>
+                      setPageSize(Number(event.target.value))
+                    }
+                    className="rounded-md border border-gray-300 bg-white px-2 py-1"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                  </select>
+                </label>
+                <span className="px-2">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={page === 1}
+                  onClick={() => setPage((current) => current - 1)}
+                  className="rounded-md border border-gray-300 p-1.5 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  disabled={page === totalPages}
+                  onClick={() => setPage((current) => current + 1)}
+                  className="rounded-md border border-gray-300 p-1.5 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {exportDocuments.length > 0 && (
+        <div
+          className="pointer-events-none fixed -left-[20000px] top-0"
+          aria-hidden="true"
+        >
+          {exportDocuments.map((document) => (
+            <DocumentPreview key={document.id} document={document} />
+          ))}
+        </div>
       )}
     </div>
   );

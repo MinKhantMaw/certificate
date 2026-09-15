@@ -90,8 +90,7 @@ export function TemplateDetail() {
       updatedAt: new Date().toISOString(),
     };
     await storage.updateTemplate(updatedTemplate);
-    setTemplate(updatedTemplate);
-    setError("");
+    navigate("/document-templates");
   };
   const remove = async () => {
     try {

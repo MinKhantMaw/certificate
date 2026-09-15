@@ -192,6 +192,7 @@ export function TemplateBuilder({
       height: type === "qr" ? 120 : type === "signature" ? 80 : 70,
       rotation: 0,
       key: type === "text" ? "name" : undefined,
+      content: type === "plain_text" ? "Plain text" : undefined,
       signatureId: type === "signature" ? signatures[0]?.id : undefined,
       style:
         type === "text"
@@ -352,14 +353,19 @@ export function TemplateBuilder({
           </p>
           <ToolButton
             icon={<Type size={16} />}
-            label="Text"
+            label="Dynamic text"
             onClick={() => addElement("text")}
           />
-          {/* <ToolButton
-          icon={<ImagePlus size={16} />}
-          label="Image"
-          onClick={() => addElement("image")}
-        /> */}
+          <ToolButton
+            icon={<Type size={16} />}
+            label="Plain text"
+            onClick={() => addElement("plain_text")}
+          />
+          <ToolButton
+            icon={<ImagePlus size={16} />}
+            label="Image"
+            onClick={() => addElement("image")}
+          />
           {/* <ToolButton
           icon={<Signature size={16} />}
           label="Signature"
@@ -663,14 +669,18 @@ function EditorElement({
       node.scaleY(1);
     },
   };
-  if (element.type === "text")
+  if (element.type === "text" || element.type === "plain_text")
     return (
       <Text
         {...common}
-        text={`{{${element.key || "name"}}}`}
+        text={
+          element.type === "plain_text"
+            ? element.content || "Plain text"
+            : `{{${element.key || "name"}}}`
+        }
         fontFamily={element.style?.fontFamily}
         fontSize={element.style?.fontSize}
-        fontStyle={element.style?.fontWeight === "bold" ? "bold" : "normal"}
+        fontStyle={`${element.style?.fontWeight || "normal"} ${element.style?.fontStyle || "normal"}`}
         fill={element.style?.color}
         align={element.style?.align}
         verticalAlign="middle"
@@ -743,21 +753,33 @@ function Properties({
           </label>
         ))}
       </div>
-      {element.type === "text" && (
+      {(element.type === "text" || element.type === "plain_text") && (
         <>
-          <label className="block text-xs text-slate-500">
-            Placeholder key
-            <input
-              value={element.key || ""}
-              onChange={(event) =>
-                onChange({
-                  key: event.target.value.replace(/^\{\{|\}\}$/g, "").trim(),
-                })
-              }
-              placeholder="name"
-              className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-slate-900"
-            />
-          </label>
+          {element.type === "text" ? (
+            <label className="block text-xs text-slate-500">
+              Placeholder key
+              <input
+                value={element.key || ""}
+                onChange={(event) =>
+                  onChange({
+                    key: event.target.value.replace(/^\{\{|\}\}$/g, "").trim(),
+                  })
+                }
+                placeholder="name"
+                className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-slate-900"
+              />
+            </label>
+          ) : (
+            <label className="block text-xs text-slate-500">
+              Text
+              <textarea
+                value={element.content || ""}
+                onChange={(event) => onChange({ content: event.target.value })}
+                rows={3}
+                className="mt-1 w-full resize-y rounded border border-slate-300 px-2 py-1.5 text-slate-900"
+              />
+            </label>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <label className="text-xs text-slate-500">
               Font size
@@ -780,6 +802,55 @@ function Properties({
                 }
                 className="mt-1 h-8 w-full"
               />
+            </label>
+          </div>
+          <label className="block text-xs text-slate-500">
+            Font family
+            <select
+              value={element.style?.fontFamily || "Arial"}
+              onChange={(event) =>
+                onChange({ style: { fontFamily: event.target.value } })
+              }
+              className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-slate-900"
+            >
+              <option value="Arial">Arial</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Times New Roman">Times New Roman</option>
+              <option value="Verdana">Verdana</option>
+              <option value="Trebuchet MS">Trebuchet MS</option>
+              <option value="Courier New">Courier New</option>
+            </select>
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-xs text-slate-500">
+              Weight
+              <select
+                value={element.style?.fontWeight || "normal"}
+                onChange={(event) =>
+                  onChange({ style: { fontWeight: event.target.value } })
+                }
+                className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
+              >
+                <option value="normal">Normal</option>
+                <option value="bold">Bold</option>
+              </select>
+            </label>
+            <label className="text-xs text-slate-500">
+              Style
+              <select
+                value={element.style?.fontStyle || "normal"}
+                onChange={(event) =>
+                  onChange({
+                    style: {
+                      fontStyle: event.target.value as "normal" | "italic",
+                    },
+                  })
+                }
+                className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
+              >
+                <option value="normal">Normal</option>
+                <option value="italic">Italic</option>
+              </select>
             </label>
           </div>
           <select

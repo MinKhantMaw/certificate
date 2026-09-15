@@ -24,7 +24,7 @@ export interface DocumentTemplate {
   updatedAt: string;
 }
 
-export type TemplateElementType = 'text' | 'image' | 'signature' | 'qr' | 'shape';
+export type TemplateElementType = 'text' | 'plain_text' | 'image' | 'signature' | 'qr' | 'shape';
 export type TemplatePageSize = 'A4' | 'BUSINESS_CARD' | 'CUSTOM';
 export type TemplateOrientation = 'portrait' | 'landscape';
 
@@ -32,6 +32,7 @@ export interface TemplateTextStyle {
   fontFamily: string;
   fontSize: number;
   fontWeight: string;
+  fontStyle?: 'normal' | 'italic';
   color: string;
   align: 'left' | 'center' | 'right';
   lineHeight?: number;
@@ -41,6 +42,7 @@ export interface TemplateElement {
   id: string;
   type: TemplateElementType;
   key?: string;
+  content?: string;
   src?: string;
   signatureId?: string;
   x: number;

@@ -13,12 +13,68 @@ const row = (overrides: Partial<ImportedRow> = {}): ImportedRow => ({
   isValid: true, errors: [], dynamicData: {}, ...overrides,
 });
 
+const qrTemplate = (): DocumentTemplate => ({
+  ...template(),
+  layout: {
+    version: 1,
+    canvas: { width: 100, height: 100, pageSize: "A4", orientation: "portrait" },
+    elements: [{ id: "qr", type: "qr", x: 0, y: 0, width: 20, height: 20, rotation: 0 }],
+  },
+});
+
 async function loadStorage() {
   vi.resetModules();
   return (await import("./storage")).storage;
 }
 
 beforeEach(() => localStorage.clear());
+
+describe("document QR generation", () => {
+  it("encrypts each generated document when its template contains a QR", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, token: "encrypted-token", qr_url: "https://checker.example/?key=encrypted-token" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const storage = await loadStorage();
+    await storage.initTemplates();
+    await storage.saveTemplate(qrTemplate());
+
+    const [document] = await storage.generateDocuments([row()], "template-1");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          payload: {
+            cert_id: document.id,
+            recipient: "Alex Smith",
+            issued_at: "2026-01-01",
+          },
+        }),
+      }),
+    );
+    expect(document).toMatchObject({
+      encryptedQrUrl: "https://checker.example/?key=encrypted-token",
+      encryptedQrToken: "encrypted-token",
+    });
+  });
+
+  it("does not request encryption when its template has no QR", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const storage = await loadStorage();
+    await storage.initTemplates();
+    await storage.saveTemplate(template());
+
+    const [document] = await storage.generateDocuments([row()], "template-1");
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(document.encryptedQrUrl).toBeUndefined();
+    expect(document.encryptedQrToken).toBeUndefined();
+  });
+});
 
 describe("document template CRUD", () => {
   it("creates, updates, and deletes a persisted template", async () => {
