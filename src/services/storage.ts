@@ -182,7 +182,7 @@ export const storage = {
     if (storage.getUsers().length) return;
     const hasDocuments = storage.getDocuments().length > 0;
     const users: User[] = [
-      { id: 'u-admin', name: 'Maya Admin', email: 'admin@example.com', role: 'ADMIN' },
+      { id: 'u-admin', name: ' Admin', email: 'admin@example.com', role: 'ADMIN' },
       { id: 'u-trainer', name: 'John Smith', email: 'trainer@example.com', role: 'TRAINER' },
       { id: 'u-trainer-2', name: 'Jane Doe', email: 'jane@example.com', role: 'TRAINER' },
       { id: 'u-approver', name: 'David Lee', email: 'approver@example.com', role: 'APPROVER' },

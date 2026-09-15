@@ -228,11 +228,11 @@ export function VerifyDocument() {
             </div>
 
             {/* Document Preview */}
-            <div className="bg-gray-100 p-8 rounded-2xl border border-gray-200 flex justify-center overflow-x-auto shadow-inner">
+            {/* <div className="bg-gray-100 p-8 rounded-2xl border border-gray-200 flex justify-center overflow-x-auto shadow-inner">
               <div className="origin-top-left">
                 <DocumentPreview document={cert} />
               </div>
-            </div>
+            </div> */}
           </div>
         )}
       </main>

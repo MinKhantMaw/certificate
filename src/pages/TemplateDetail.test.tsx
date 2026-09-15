@@ -62,7 +62,6 @@ beforeEach(() => {
     { id: "unused", name: "Unused template", description: "", design: "konva", status: "INACTIVE", createdBy: "admin", createdAt: "", updatedAt: "" },
   );
   vi.clearAllMocks();
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   const container = window.document.createElement("div");
   window.document.body.replaceChildren(container);
   root = createRoot(container);
@@ -97,11 +96,14 @@ describe("TemplateDetail", () => {
     await vi.waitFor(() => expect(window.document.body.textContent).toContain("Used template"));
     const buttons = window.document.querySelectorAll("button");
     await act(async () => (buttons[1] as HTMLButtonElement).click());
+    expect(window.document.body.textContent).toContain("Are you sure you want to delete the template \"Used template\"?");
+    await act(async () => (window.document.querySelector('[role="dialog"] button.bg-red-600') as HTMLButtonElement).click());
     expect(window.document.body.textContent).toContain("Cannot delete a template used by existing documents.");
 
     renderDetail("unused");
     await vi.waitFor(() => expect(window.document.body.textContent).toContain("Unused template"));
     await act(async () => (window.document.querySelectorAll("button")[1] as HTMLButtonElement).click());
+    await act(async () => (window.document.querySelector('[role="dialog"] button.bg-red-600') as HTMLButtonElement).click());
     await vi.waitFor(() => expect(window.document.body.textContent).toContain("Templates list"));
   });
 

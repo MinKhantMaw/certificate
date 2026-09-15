@@ -65,10 +65,14 @@ export function AdminLayout() {
       {/* Sidebar */}
       <aside className="hidden w-64 shrink-0 border-r border-[#d9e3f0] bg-[#002c76] text-white md:flex md:flex-col">
         <div className="h-16 flex items-center px-6 border-b border-white/15">
-          <span className="mr-2 flex h-8 w-8 items-center justify-center rounded-lg bg-[#e11e26] text-white">
-            <FileBadge className="w-5 h-5" />
+          <img
+            src="/kbzlogo.png"
+            alt="KBZ logo"
+            className="mr-2 h-8 w-8 rounded-lg object-cover shadow-sm shadow-[#001f52]/30"
+          />
+          <span className="font-bold text-lg tracking-tight">
+            KBZ E-Certificate
           </span>
-          <span className="font-bold text-lg tracking-tight">Kanva</span>
         </div>
         <div className="flex-1 overflow-y-auto py-4">
           <nav className="space-y-1 px-3">
@@ -101,7 +105,7 @@ export function AdminLayout() {
               onClick={() => setMobileMenuOpen((open) => !open)}
               aria-label="Toggle navigation menu"
               aria-expanded={mobileMenuOpen}
-                 className="-ml-2 p-2 text-[#0054a6] hover:text-[#003f82] md:hidden"
+              className="-ml-2 p-2 text-[#0054a6] hover:text-[#003f82] md:hidden"
             >
               <Menu className="w-6 h-6" />
             </button>

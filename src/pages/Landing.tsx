@@ -40,11 +40,19 @@ export function Landing() {
     <div className="min-h-screen overflow-hidden bg-[#002c76] font-sans text-slate-900">
       <header className="relative z-10 border-b border-white/15 bg-[#002c76]/95 text-white backdrop-blur">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
-          <Link to="/" className="flex items-center gap-3" aria-label="Kanva home">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e11e26] text-white">
-              <FileBadge className="w-6 h-6" />
+          <Link
+            to="/"
+            className="flex items-center gap-3"
+            aria-label="Kanva home"
+          >
+            <img
+              src="/kbzlogo.png"
+              alt="KBZ logo"
+              className="h-10 w-10 rounded-xl object-cover shadow-sm shadow-[#001f52]/30"
+            />
+            <span className="text-lg font-semibold tracking-tight">
+              KBZ E-Certificate
             </span>
-            <span className="text-lg font-semibold tracking-tight">Kanva</span>
           </Link>
           <Link
             to="/login"
