@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { parseJson, query, serverError } from '../_lib/db';
+import { requireUser } from '../_lib/auth';
 
-interface Request { method?: string; body?: unknown; }
+interface Request { method?: string; body?: unknown; headers?: { cookie?: string }; }
 interface Response { status: (code: number) => Response; json: (body: unknown) => void; }
 
 type TemplateInput = {
@@ -31,6 +32,7 @@ function mapTemplate(row: Record<string, unknown>) {
 }
 
 export default async function handler(req: Request, res: Response) {
+  if (!await requireUser(req, res)) return;
   try {
     if (req.method === 'GET') {
       const rows = await query<Record<string, unknown>>('SELECT * FROM templates ORDER BY updated_at DESC');

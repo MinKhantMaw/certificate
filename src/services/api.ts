@@ -14,13 +14,17 @@ export const apiEnabled = runtimeEnv?.MODE !== "test";
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
+    credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
       ...(init?.headers || {}),
     },
   });
   const text = await response.text();
-  const body = text ? JSON.parse(text) : undefined;
+  let body: any;
+  if (text) {
+    try { body = JSON.parse(text); } catch { body = { error: text }; }
+  }
   if (!response.ok) {
     throw new ApiError(body?.error || "The server request failed.", response.status);
   }

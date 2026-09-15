@@ -1,12 +1,14 @@
 import { query, serverError } from '../_lib/db';
 import { mapDocument } from '../_lib/documents';
+import { requireUser } from '../_lib/auth';
 
-interface Request { method?: string; query: Record<string, string | string[] | undefined>; body?: unknown; }
+interface Request { method?: string; query: Record<string, string | string[] | undefined>; body?: unknown; headers?: { cookie?: string }; }
 interface Response { status: (code: number) => Response; json: (body: unknown) => void; }
 function getId(req: Request) { const value = req.query.id; return Array.isArray(value) ? value[0] : value; }
 
 export default async function handler(req: Request, res: Response) {
   const id = getId(req);
+  if (!await requireUser(req, res)) return;
   if (!id) return res.status(400).json({ error: 'Document id is required.' });
   try {
     if (req.method === 'GET') {

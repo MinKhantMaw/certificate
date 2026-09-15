@@ -53,6 +53,8 @@ export const storage = {
   login: (email: string, role: UserRole = 'ADMIN'): User => { const user = storage.getUsers().find(item => item.email === email) || { id: crypto.randomUUID(), email, name: email.split('@')[0], role }; write(KEYS.auth, user); return user; },
   logout: () => { if (apiEnabled) void api.logout().catch(() => undefined); localStorage.removeItem(KEYS.auth); },
   getUser: (): User | null => read<User | null>(KEYS.auth, null),
+  setSessionUser: (user: User) => { write(KEYS.auth, user); write(KEYS.users, [user, ...storage.getUsers().filter((item) => item.id !== user.id)]); },
+  clearSession: () => localStorage.removeItem(KEYS.auth),
   getUsers: (): User[] => read<User[]>(KEYS.users, []),
   getUsersByRole: (role: UserRole) => storage.getUsers().filter(user => user.role === role),
   updateUser: (user: User) => {
@@ -84,13 +86,13 @@ export const storage = {
     }
   },
   saveTemplate: async (template: DocumentTemplate) => {
-    if (apiEnabled) try { template = await api.createTemplate(template); } catch { /* local fallback for offline mode */ }
+    if (apiEnabled) template = await api.createTemplate(template);
     templateCache = [...templateCache, template];
     write(KEYS.templates, templateCache);
     templatesInitialized = true;
   },
   updateTemplate: async (template: DocumentTemplate) => {
-    if (apiEnabled) try { template = await api.updateTemplate(template); } catch { /* local fallback for offline mode */ }
+    if (apiEnabled) template = await api.updateTemplate(template);
     templateCache = templateCache.map(item => item.id === template.id ? template : item);
     write(KEYS.templates, templateCache);
     templatesInitialized = true;
@@ -128,13 +130,15 @@ export const storage = {
     const template = storage.getTemplates().find(item => item.id === templateId && item.status === 'ACTIVE');
     if (!template) throw new Error('Select an active document template before generation.');
     if (!rows.length || rows.some(row => !row.isValid)) throw new Error('All imported rows must be valid before generation.');
-    if (apiEnabled) try {
+    if (apiEnabled) {
       const result = await api.generateDocuments({ templateId, fileName: 'import.xlsx', uploadedBy: storage.getUser()?.id, rows });
+      // const requiresQr = Boolean(template.layout?.elements.some((element) => element.type === 'qr'));
+      // if (requiresQr && result.documents.some((document) => !document.encryptedQrUrl || !document.encryptedQrToken)) {
+      //   throw new Error('QR generation did not complete. No certificate was added. Please verify the QR encryption service configuration and try again.');
+      // }
       documentCache = [...result.documents, ...documentCache];
       write(KEYS.documents, documentCache);
       return result.documents;
-    } catch (error) {
-      if (typeof window !== 'undefined' && !navigator.onLine) throw error;
     }
     const timestamp = now();
     const existingDocuments = storage.getDocuments();

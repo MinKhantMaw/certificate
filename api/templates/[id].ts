@@ -1,12 +1,14 @@
 import { parseJson, query, serverError } from '../_lib/db';
+import { requireUser } from '../_lib/auth';
 
-interface Request { method?: string; query: Record<string, string | string[] | undefined>; body?: unknown; }
+interface Request { method?: string; query: Record<string, string | string[] | undefined>; body?: unknown; headers?: { cookie?: string }; }
 interface Response { status: (code: number) => Response; json: (body: unknown) => void; }
 
 function idFrom(req: Request) { const value = req.query.id; return Array.isArray(value) ? value[0] : value; }
 function mapTemplate(row: Record<string, unknown>) { return { id: row.id, name: row.name, description: row.description, design: row.design, status: row.status, layout: parseJson(row.layout, {}), createdBy: row.created_by, createdAt: row.created_at, updatedAt: row.updated_at }; }
 
 export default async function handler(req: Request, res: Response) {
+  if (!await requireUser(req, res)) return;
   const id = idFrom(req);
   if (!id) return res.status(400).json({ error: 'Template id is required.' });
   try {

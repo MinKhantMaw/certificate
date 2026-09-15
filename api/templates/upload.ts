@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { requireUser } from '../_lib/auth';
 
 interface Request {
   method?: string;
@@ -22,7 +23,8 @@ const types: Record<string, string> = {
 export const config = { api: { bodyParser: false } };
 
 export default async function handler(req: Request, res: Response) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (!await requireUser(req, res)) return;
   const contentType = String(req.headers?.['content-type'] || '').split(';')[0].toLowerCase();
   const extension = types[contentType];
   if (!extension) return res.status(415).json({ error: 'Only PNG, JPEG, WEBP, and GIF images are supported.' });

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { toPng } from "html-to-image";
 import JSZip from "jszip";
+import { jsPDF } from "jspdf";
 import { storage } from "../services/storage";
 import { Document, DocumentTemplate, ImportBatch } from "../types";
 import { Link } from "react-router-dom";
@@ -235,7 +236,7 @@ export function DocumentList() {
   useEffect(() => {
     if (!exportDocuments.length) return;
     let active = true;
-    const exportImages = async () => {
+    const exportPdfs = async () => {
       setExporting(true);
       setExportProgress(0);
       setExportError("");
@@ -255,11 +256,10 @@ export function DocumentList() {
             throw new Error(
               `Unable to render ${document.documentNumber || document.id}.`,
             );
-          const dataUrl = await toPng(node, { cacheBust: true, pixelRatio: 1 });
-          zip.file(
-            `${document.documentNumber || document.id}.png`,
-            await (await fetch(dataUrl)).blob(),
-          );
+          const dataUrl = await toPng(node, { cacheBust: true, pixelRatio: 2 });
+          const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+          pdf.addImage(dataUrl, "PNG", 0, 0, 297, 210);
+          zip.file(`${document.documentNumber || document.id}.pdf`, pdf.output("blob"));
           setExportProgress(
             Math.round(((index + 1) / exportDocuments.length) * 100),
           );
@@ -267,7 +267,7 @@ export function DocumentList() {
         const blob = await zip.generateAsync({ type: "blob" });
         const link = window.document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = `${selectedTemplate?.name || "documents"}-images.zip`;
+        link.download = `${selectedTemplate?.name || "documents"}-pdfs.zip`;
         link.click();
         URL.revokeObjectURL(link.href);
       } catch (reason) {
@@ -285,7 +285,7 @@ export function DocumentList() {
         }
       }
     };
-    void exportImages();
+    void exportPdfs();
     return () => {
       active = false;
     };

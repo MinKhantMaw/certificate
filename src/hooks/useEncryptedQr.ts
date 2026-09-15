@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Document } from '../types';
-import { getOrCreateEncryptedQr, isPreviewDocument } from '../services/encryptLink';
+import { isPreviewDocument, requestEncryptedQr } from '../services/encryptLink';
 
 export type EncryptedQrStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 export function useEncryptedQr(document: Document, enabled = true) {
   const preview = isPreviewDocument(document);
   const cachedUrl = document.encryptedQrUrl || '';
+  const previewUrl = document.verificationUrl || 'https://example.invalid/document-preview';
   const [url, setUrl] = useState(cachedUrl);
   const [status, setStatus] = useState<EncryptedQrStatus>(
     !enabled || preview ? 'idle' : cachedUrl ? 'ready' : 'loading',
@@ -20,8 +21,8 @@ export function useEncryptedQr(document: Document, enabled = true) {
       return;
     }
     if (preview) {
-      setUrl('');
-      setStatus('idle');
+      setUrl(previewUrl);
+      setStatus('ready');
       return;
     }
     if (cachedUrl) {
@@ -30,8 +31,9 @@ export function useEncryptedQr(document: Document, enabled = true) {
       return;
     }
     let active = true;
+    setUrl('');
     setStatus('loading');
-    getOrCreateEncryptedQr(document)
+    requestEncryptedQr(document, { allowFallback: false })
       .then((encrypted) => {
         if (!active) return;
         setUrl(encrypted.qrUrl);
@@ -45,9 +47,12 @@ export function useEncryptedQr(document: Document, enabled = true) {
     return () => {
       active = false;
     };
-  }, [document.id, cachedUrl, enabled, preview, attempt]);
+  }, [document.id, cachedUrl, enabled, preview, previewUrl, attempt]);
 
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  const retry = useCallback(() => {
+    if (preview) return;
+    setAttempt((value) => value + 1);
+  }, [preview]);
 
   return { url, status, retry };
 }

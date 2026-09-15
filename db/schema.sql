@@ -1,92 +1,92 @@
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email TEXT NOT NULL UNIQUE,
-    name TEXT NOT NULL,
-    password_hash TEXT,
-    role TEXT NOT NULL DEFAULT 'ADMIN' CHECK (role IN ('ADMIN', 'TRAINER', 'APPROVER')),
-    signature_image TEXT,
-    signature_uploaded_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NULL,
+    role ENUM('ADMIN', 'TRAINER', 'APPROVER') NOT NULL DEFAULT 'ADMIN',
+    signature_image TEXT NULL,
+    signature_uploaded_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS templates (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    description TEXT NOT NULL DEFAULT '',
-    design TEXT NOT NULL DEFAULT 'konva',
-    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE')),
-    layout JSONB NOT NULL,
-    created_by UUID REFERENCES users(id) ON DELETE
-    SET NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    design VARCHAR(50) NOT NULL DEFAULT 'konva',
+    status ENUM('ACTIVE', 'INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+    layout JSON NOT NULL,
+    created_by CHAR(36) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_templates_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE
+    SET NULL
 );
-CREATE INDEX IF NOT EXISTS templates_status_idx ON templates(status);
 CREATE TABLE IF NOT EXISTS import_batches (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    template_id UUID NOT NULL REFERENCES templates(id),
-    file_name TEXT NOT NULL,
-    total_rows INTEGER NOT NULL,
-    valid_rows INTEGER NOT NULL,
-    invalid_rows INTEGER NOT NULL,
-    status TEXT NOT NULL CHECK (status IN ('COMPLETED', 'FAILED')),
-    uploaded_by UUID REFERENCES users(id) ON DELETE
-    SET NULL,
-        submitted_at TIMESTAMPTZ NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    template_id CHAR(36) NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    total_rows INT NOT NULL,
+    valid_rows INT NOT NULL,
+    invalid_rows INT NOT NULL,
+    status ENUM('COMPLETED', 'FAILED') NOT NULL,
+    uploaded_by CHAR(36) NULL,
+    submitted_at DATETIME NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_import_batches_template FOREIGN KEY (template_id) REFERENCES templates(id),
+    CONSTRAINT fk_import_batches_uploader FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE
+    SET NULL
 );
-CREATE INDEX IF NOT EXISTS import_batches_created_at_idx ON import_batches(created_at DESC);
 CREATE TABLE IF NOT EXISTS documents (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    document_number TEXT NOT NULL UNIQUE,
-    short_id TEXT NOT NULL UNIQUE,
-    verification_token TEXT NOT NULL UNIQUE,
-    template_id UUID NOT NULL REFERENCES templates(id),
-    import_batch_id UUID REFERENCES import_batches(id) ON DELETE
-    SET NULL,
-        recipient_name TEXT NOT NULL,
-        document_title TEXT NOT NULL,
-        course_name TEXT NOT NULL DEFAULT '',
-        issue_date DATE NOT NULL,
-        organization TEXT NOT NULL DEFAULT '',
-        document_type TEXT NOT NULL DEFAULT 'completion',
-        email TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'VALID' CHECK (status IN ('VALID', 'REVOKED')),
-        dynamic_data JSONB NOT NULL DEFAULT '{}'::jsonb,
-        encrypted_qr_url TEXT,
-        encrypted_qr_token TEXT,
-        encrypted_qr_at TIMESTAMPTZ,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        revoked_at TIMESTAMPTZ,
-        deleted_at TIMESTAMPTZ
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    document_number VARCHAR(128) NOT NULL UNIQUE,
+    short_id VARCHAR(32) NOT NULL UNIQUE,
+    verification_token CHAR(36) NOT NULL UNIQUE,
+    template_id CHAR(36) NOT NULL,
+    import_batch_id CHAR(36) NULL,
+    recipient_name VARCHAR(255) NOT NULL,
+    document_title VARCHAR(255) NOT NULL,
+    course_name VARCHAR(255) NOT NULL DEFAULT '',
+    issue_date DATE NOT NULL,
+    organization VARCHAR(255) NOT NULL DEFAULT '',
+    document_type VARCHAR(64) NOT NULL DEFAULT 'completion',
+    email VARCHAR(255) NOT NULL,
+    status ENUM('VALID', 'REVOKED') NOT NULL DEFAULT 'VALID',
+    dynamic_data JSON NOT NULL,
+    encrypted_qr_url TEXT NULL,
+    encrypted_qr_token TEXT NULL,
+    encrypted_qr_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    revoked_at DATETIME NULL,
+    deleted_at DATETIME NULL,
+    CONSTRAINT fk_documents_template FOREIGN KEY (template_id) REFERENCES templates(id),
+    CONSTRAINT fk_documents_batch FOREIGN KEY (import_batch_id) REFERENCES import_batches(id) ON DELETE
+    SET NULL
 );
-CREATE INDEX IF NOT EXISTS documents_template_status_idx ON documents(template_id, status);
-CREATE INDEX IF NOT EXISTS documents_created_at_idx ON documents(created_at DESC);
-CREATE INDEX IF NOT EXISTS documents_verification_token_idx ON documents(verification_token);
-CREATE INDEX IF NOT EXISTS documents_dynamic_data_idx ON documents USING GIN(dynamic_data);
 CREATE TABLE IF NOT EXISTS import_rows (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    import_batch_id UUID NOT NULL REFERENCES import_batches(id) ON DELETE CASCADE,
-    row_number INTEGER NOT NULL,
-    data JSONB NOT NULL,
-    validation_errors JSONB NOT NULL DEFAULT '[]'::jsonb,
-    validation_status TEXT NOT NULL CHECK (validation_status IN ('VALID', 'INVALID')),
-    document_id UUID REFERENCES documents(id) ON DELETE
-    SET NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        UNIQUE(import_batch_id, row_number)
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    import_batch_id CHAR(36) NOT NULL,
+    `row_number` INT NOT NULL,
+    `data` JSON NOT NULL,
+    `validation_errors` JSON NOT NULL,
+    validation_status ENUM('VALID', 'INVALID') NOT NULL,
+    document_id CHAR(36) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_import_rows_batch_row (import_batch_id, `row_number`),
+    CONSTRAINT fk_import_rows_batch FOREIGN KEY (import_batch_id) REFERENCES import_batches(id) ON DELETE CASCADE,
+    CONSTRAINT fk_import_rows_document FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE
+    SET NULL
 );
 CREATE TABLE IF NOT EXISTS audit_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id) ON DELETE
-    SET NULL,
-        action TEXT NOT NULL,
-        entity_type TEXT NOT NULL,
-        entity_id TEXT NOT NULL,
-        metadata JSONB,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    user_id CHAR(36) NULL,
+    action VARCHAR(255) NOT NULL,
+    entity_type VARCHAR(255) NOT NULL,
+    entity_id VARCHAR(255) NOT NULL,
+    metadata JSON NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_audit_logs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE
+    SET NULL
 );
-CREATE INDEX IF NOT EXISTS audit_logs_entity_idx ON audit_logs(entity_type, entity_id);

@@ -24,13 +24,18 @@ import {
 function PrintDocumentButton({
   document,
   requiresQr,
+  onQrReady,
 }: {
   document: Document;
   requiresQr: boolean;
+  onQrReady?: (url: string) => void;
 }) {
-  const { status, retry } = useEncryptedQr(document, requiresQr);
+  const { url, status, retry } = useEncryptedQr(document, requiresQr);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState("");
+  useEffect(() => {
+    if (requiresQr && status === "ready" && url) onQrReady?.(url);
+  }, [onQrReady, requiresQr, status, url]);
 
   if (requiresQr && status === "error")
     return (
@@ -151,8 +156,10 @@ export function DocumentDetail() {
   const [showRevokeModal, setShowRevokeModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [retriedQrUrl, setRetriedQrUrl] = useState("");
   useEffect(() => {
     if (id) {
+      setRetriedQrUrl("");
       const initialDocument = storage.getDocumentById(id) || null;
       setCert(initialDocument);
       const hydrate =
@@ -288,7 +295,11 @@ export function DocumentDetail() {
             <ExternalLink className="w-4 h-4 mr-2" />
             Verification Page
           </a> */}
-          <PrintDocumentButton document={cert} requiresQr={requiresQr} />
+          <PrintDocumentButton
+            document={cert}
+            requiresQr={requiresQr}
+            onQrReady={setRetriedQrUrl}
+          />
           {cert.status === "VALID" && (
             <button
               onClick={handleRevoke}
@@ -343,7 +354,12 @@ export function DocumentDetail() {
       {/* Print Area */}
       <div className="bg-gray-100 p-8 rounded-xl border border-gray-200 flex justify-center overflow-x-auto print:bg-white print:p-0 print:border-none print:m-0 print:block">
         <div className="print-container origin-top-left">
-          <DocumentPreview document={cert} baseUrl={window.location.origin} />
+          <DocumentPreview
+            document={
+              retriedQrUrl ? { ...cert, encryptedQrUrl: retriedQrUrl } : cert
+            }
+            baseUrl={window.location.origin}
+          />
         </div>
       </div>
 

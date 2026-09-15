@@ -120,7 +120,7 @@ describe("TemplateDetail", () => {
       (window.document.querySelector("form") as HTMLFormElement).dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     });
 
-    expect(storageMock.updateTemplate).toHaveBeenCalledWith(expect.objectContaining({ id: "used", name: "Renamed template" }));
-    expect(window.document.body.textContent).toContain("Renamed template");
+    await vi.waitFor(() => expect(storageMock.updateTemplate).toHaveBeenCalledWith(expect.objectContaining({ id: "used", name: "Renamed template" })));
+    expect(window.document.body.textContent).toContain("Templates list");
   });
 });

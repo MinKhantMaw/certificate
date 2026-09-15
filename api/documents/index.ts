@@ -1,11 +1,13 @@
 import { query, serverError } from '../_lib/db';
 import { mapDocument } from '../_lib/documents';
+import { requireUser } from '../_lib/auth';
 
-interface Request { method?: string; query?: Record<string, string | string[] | undefined>; }
+interface Request { method?: string; query?: Record<string, string | string[] | undefined>; headers?: { cookie?: string }; }
 interface Response { status: (code: number) => Response; json: (body: unknown) => void; }
 
 export default async function handler(req: Request, res: Response) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (!await requireUser(req, res)) return;
   try {
     const value = req.query?.templateId;
     const templateId = Array.isArray(value) ? value[0] : value;

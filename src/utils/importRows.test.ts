@@ -9,14 +9,35 @@ describe("direct import row validation", () => {
     expect(row.dynamicData).toMatchObject({ recipient_name: "Alex", course_name: "Security" });
   });
 
-  it("reports only fields required by the selected template", () => {
-    const invalid = parseImportedRow({ recipient_name: "Alex", email: "invalid" }, ["course_name"]);
-    expect(invalid.errors).toEqual(["Missing template field course_name"]);
+  it("requires only recipient name", () => {
+    const row = parseImportedRow({ email: "alex.com" }, ["recipient_name", "course_name", "organization"]);
+    expect(row.isValid).toBe(false);
+    expect(row.errors).toEqual(["Missing required field recipient_name"]);
   });
 
-  it("accepts a template row without recipient name or email fields", () => {
-    const row = parseImportedRow({ course_name: "Security" }, ["course_name"]);
+  it("accepts only the required field", () => {
+    const row = parseImportedRow({ Name: "Alex" }, ["recipient_name", "course_name", "issue_date", "organization"]);
     expect(row.isValid).toBe(true);
+    expect(row.course_name).toBe("");
+    expect(row.issue_date).toBe("");
+    expect(row.dynamicData).toMatchObject({ recipient_name: "Alex" });
+  });
+
+  it("accepts a few optional fields with Excel header aliases", () => {
+    const row = parseImportedRow({ Name: "Alex", "Course Name": "Security", "Issue Date": "2026-09-15" }, []);
+    expect(row.isValid).toBe(true);
+    expect(row.course_name).toBe("Security");
+    expect(row.issue_date).toBe("2026-09-15");
+    expect(row.dynamicData).toMatchObject({ recipient_name: "Alex", course_name: "Security", issue_date: "2026-09-15" });
+  });
+
+  it("accepts different combinations of missing optional fields", () => {
+    const rows = [
+      parseImportedRow({ recipient_name: "Alex", department: "IT" }, ["employee_id", "department", "position"]),
+      parseImportedRow({ recipient_name: "Blair", document_title: "Completion" }, ["document_title", "course_name", "organization"]),
+      parseImportedRow({ recipient_name: "Casey", organization: "KBZ", document_type: "completion" }, ["issue_date", "document_type"]),
+    ];
+    expect(rows.every((row) => row.isValid && row.errors.length === 0)).toBe(true);
   });
 
   it("defines the supported file and row limits", () => {

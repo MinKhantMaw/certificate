@@ -7,7 +7,7 @@ describe('requestEncryptedQr', () => {
   });
 
   it('uses the configured VITE_ENCRYPT_API_URL when available', async () => {
-    const configuredUrl = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.VITE_ENCRYPT_API_URL ?? process.env.VITE_ENCRYPT_API_URL;
+    const configuredUrl = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.VITE_ENCRYPT_API_URL ?? process.env.VITE_ENCRYPT_API_URL ?? "https://gi3oqjepp0.execute-api.eu-north-1.amazonaws.com/encrypt";
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ qr_url: 'https://example.com/qr/abc123', token: 'abc123' }),
