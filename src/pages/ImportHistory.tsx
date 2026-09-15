@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, FileSpreadsheet, History } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  FileSpreadsheet,
+  History,
+} from "lucide-react";
 import { ImportBatch } from "../types";
 import { storage } from "../services/storage";
 import { formatDate } from "../utils";
@@ -40,20 +45,16 @@ export function ImportHistory() {
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                {[
-                  "File",
-                  "Template",
-                  "Rows",
-                  "Status",
-                  "Submitted",
-                ].map((label) => (
-                  <th
-                    key={label}
-                    className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
-                  >
-                    {label}
-                  </th>
-                ))}
+                {["File", "Template", "Rows", "Status", "Submitted"].map(
+                  (label) => (
+                    <th
+                      key={label}
+                      className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
+                    >
+                      {label}
+                    </th>
+                  ),
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -78,15 +79,15 @@ export function ImportHistory() {
                       {batch.fileName}
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-600">
-                      {templates.find((template) => template.id === batch.templateId)?.name || "Unknown"}
+                      {templates.find(
+                        (template) => template.id === batch.templateId,
+                      )?.name || "Unknown"}
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-600">
                       {batch.validRows} valid / {batch.totalRows} total
                     </td>
                     <td className="px-5 py-4">
-                      <span
-                        className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700"
-                      >
+                      <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">
                         {batch.status.replace("_", " ")}
                       </span>
                     </td>
@@ -102,7 +103,8 @@ export function ImportHistory() {
         {imports.length > 0 && (
           <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <p>
-              Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, imports.length)} of {imports.length}
+              Showing {(page - 1) * pageSize + 1}-
+              {Math.min(page * pageSize, imports.length)} of {imports.length}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-2">
@@ -120,7 +122,9 @@ export function ImportHistory() {
                   <option value={25}>25</option>
                 </select>
               </label>
-              <span className="px-2">Page {page} of {totalPages}</span>
+              <span className="px-2">
+                Page {page} of {totalPages}
+              </span>
               <button
                 type="button"
                 disabled={page === 1}

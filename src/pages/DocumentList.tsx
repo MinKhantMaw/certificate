@@ -113,7 +113,9 @@ export function DocumentList() {
 
   useEffect(() => {
     setCerts(storage.getDocuments());
-    void (storage.initDocuments?.() || Promise.resolve(storage.getDocuments())).then(setCerts);
+    void (
+      storage.initDocuments?.() || Promise.resolve(storage.getDocuments())
+    ).then(setCerts);
     storage.initTemplates().then((loadedTemplates) => {
       setTemplates(loadedTemplates);
       setTemplateId(
@@ -258,7 +260,9 @@ export function DocumentList() {
             `${document.documentNumber || document.id}.png`,
             await (await fetch(dataUrl)).blob(),
           );
-          setExportProgress(Math.round(((index + 1) / exportDocuments.length) * 100));
+          setExportProgress(
+            Math.round(((index + 1) / exportDocuments.length) * 100),
+          );
         }
         const blob = await zip.generateAsync({ type: "blob" });
         const link = window.document.createElement("a");
@@ -415,7 +419,13 @@ export function DocumentList() {
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-slate-500">Download images:</span>
             {[50, 100].map((count) => (
-              <button key={count} type="button" onClick={() => startBulkDownload(count as 50 | 100)} disabled={exporting} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+              <button
+                key={count}
+                type="button"
+                onClick={() => startBulkDownload(count as 50 | 100)}
+                disabled={exporting}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
                 <Download className="h-4 w-4" /> {count}
               </button>
             ))}

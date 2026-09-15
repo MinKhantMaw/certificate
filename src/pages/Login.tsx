@@ -16,7 +16,9 @@ export function Login() {
       await storage.loginRemote(email, password);
       navigate("/dashboard");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Invalid credentials.");
+      setError(
+        reason instanceof Error ? reason.message : "Invalid credentials.",
+      );
     }
   };
 

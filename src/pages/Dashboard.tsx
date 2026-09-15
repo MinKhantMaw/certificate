@@ -1,9 +1,16 @@
-import { useEffect, useState } from 'react';
-import { storage } from '../services/storage';
-import { Document, ImportBatch } from '../types';
-import { FileBadge, Upload, ShieldCheck, ShieldAlert, History, Plus } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { formatDate } from '../utils';
+import { useEffect, useState } from "react";
+import { storage } from "../services/storage";
+import { Document, ImportBatch } from "../types";
+import {
+  FileBadge,
+  Upload,
+  ShieldCheck,
+  ShieldAlert,
+  History,
+  Plus,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import { formatDate } from "../utils";
 
 export function Dashboard() {
   const [certs, setCerts] = useState<Document[]>([]);
@@ -15,9 +22,12 @@ export function Dashboard() {
   }, []);
 
   const totalCerts = certs.length;
-  const validCerts = certs.filter(c => c.status === 'VALID').length;
-  const revokedCerts = certs.filter(c => c.status === 'REVOKED').length;
-  const totalImportedRows = imports.reduce((acc, curr) => acc + curr.totalRows, 0);
+  const validCerts = certs.filter((c) => c.status === "VALID").length;
+  const revokedCerts = certs.filter((c) => c.status === "REVOKED").length;
+  const totalImportedRows = imports.reduce(
+    (acc, curr) => acc + curr.totalRows,
+    0,
+  );
 
   const recentCerts = certs.slice(0, 5);
   const recentImports = imports.slice(0, 5);
@@ -26,16 +36,16 @@ export function Dashboard() {
     <div className="space-y-6">
       {/* Quick Actions */}
       <div className="flex flex-col sm:flex-row gap-4 mb-8">
-        <Link 
-          to="/import" 
+        <Link
+          to="/import"
           className="flex items-center justify-center bg-[#0054a6] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#003f82] transition-colors shadow-sm"
         >
           <Upload className="w-4 h-4 mr-2" />
           Import Excel
         </Link>
-        <Link 
-          to="/documents" 
-            className="flex items-center justify-center bg-white border border-[#b9cbe0] text-[#002c76] px-4 py-2 rounded-lg font-medium hover:bg-[#f4f7fb] transition-colors shadow-sm"
+        <Link
+          to="/documents"
+          className="flex items-center justify-center bg-white border border-[#b9cbe0] text-[#002c76] px-4 py-2 rounded-lg font-medium hover:bg-[#f4f7fb] transition-colors shadow-sm"
         >
           <FileBadge className="w-4 h-4 mr-2" />
           View Documents
@@ -44,10 +54,30 @@ export function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Documents" value={totalCerts} icon={FileBadge} color="blue" />
-        <StatCard title="Valid Documents" value={validCerts} icon={ShieldCheck} color="green" />
-        <StatCard title="Revoked" value={revokedCerts} icon={ShieldAlert} color="red" />
-        <StatCard title="Total Imported Records" value={totalImportedRows} icon={History} color="purple" />
+        <StatCard
+          title="Total Documents"
+          value={totalCerts}
+          icon={FileBadge}
+          color="blue"
+        />
+        <StatCard
+          title="Valid Documents"
+          value={validCerts}
+          icon={ShieldCheck}
+          color="green"
+        />
+        <StatCard
+          title="Revoked"
+          value={revokedCerts}
+          icon={ShieldAlert}
+          color="red"
+        />
+        <StatCard
+          title="Total Imported Records"
+          value={totalImportedRows}
+          icon={History}
+          color="purple"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
@@ -55,21 +85,39 @@ export function Dashboard() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h3 className="font-semibold text-gray-900">Recent Documents</h3>
-            <Link to="/documents" className="text-sm text-[#0054a6] hover:text-[#003f82] font-medium">View all</Link>
+            <Link
+              to="/documents"
+              className="text-sm text-[#0054a6] hover:text-[#003f82] font-medium"
+            >
+              View all
+            </Link>
           </div>
           <div className="divide-y divide-gray-100">
             {recentCerts.length === 0 ? (
-              <p className="p-6 text-center text-gray-500">No documents found.</p>
+              <p className="p-6 text-center text-gray-500">
+                No documents found.
+              </p>
             ) : (
-              recentCerts.map(cert => (
-                <div key={cert.id} className="p-4 hover:bg-gray-50 transition-colors flex justify-between items-center">
+              recentCerts.map((cert) => (
+                <div
+                  key={cert.id}
+                  className="p-4 hover:bg-gray-50 transition-colors flex justify-between items-center"
+                >
                   <div>
-                    <p className="font-medium text-gray-900">{cert.recipientName}</p>
-                    <p className="text-sm text-gray-500">{cert.documentTitle} &bull; {cert.id}</p>
+                    <p className="font-medium text-gray-900">
+                      {cert.recipientName}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {cert.documentTitle} &bull; {cert.id}
+                    </p>
                   </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    cert.status === 'VALID' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      cert.status === "VALID"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
                     {cert.status}
                   </span>
                 </div>
@@ -82,18 +130,30 @@ export function Dashboard() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h3 className="font-semibold text-gray-900">Recent Imports</h3>
-            <Link to="/imports" className="text-sm text-[#0054a6] hover:text-[#003f82] font-medium">View all</Link>
+            <Link
+              to="/imports"
+              className="text-sm text-[#0054a6] hover:text-[#003f82] font-medium"
+            >
+              View all
+            </Link>
           </div>
           <div className="divide-y divide-gray-100">
             {recentImports.length === 0 ? (
               <p className="p-6 text-center text-gray-500">No imports found.</p>
             ) : (
-              recentImports.map(imp => (
-                <div key={imp.id} className="p-4 hover:bg-gray-50 transition-colors">
+              recentImports.map((imp) => (
+                <div
+                  key={imp.id}
+                  className="p-4 hover:bg-gray-50 transition-colors"
+                >
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="font-medium text-gray-900">{imp.fileName}</p>
-                      <p className="text-sm text-gray-500">{formatDate(imp.submittedAt || imp.createdAt)}</p>
+                      <p className="font-medium text-gray-900">
+                        {imp.fileName}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {formatDate(imp.submittedAt || imp.createdAt)}
+                      </p>
                     </div>
                     <span className="text-sm font-medium text-gray-900">
                       {imp.validRows} / {imp.totalRows} generated
@@ -109,12 +169,22 @@ export function Dashboard() {
   );
 }
 
-function StatCard({ title, value, icon: Icon, color }: { title: string, value: number | string, icon: any, color: string }) {
+function StatCard({
+  title,
+  value,
+  icon: Icon,
+  color,
+}: {
+  title: string;
+  value: number | string;
+  icon: any;
+  color: string;
+}) {
   const colorMap: Record<string, string> = {
-    blue: 'bg-[#e9f1fb] text-[#0054a6]',
-    green: 'bg-green-50 text-green-600',
-    red: 'bg-red-50 text-red-600',
-    purple: 'bg-[#e9f1fb] text-[#0054a6]',
+    blue: "bg-[#e9f1fb] text-[#0054a6]",
+    green: "bg-green-50 text-green-600",
+    red: "bg-red-50 text-red-600",
+    purple: "bg-[#e9f1fb] text-[#0054a6]",
   };
 
   return (

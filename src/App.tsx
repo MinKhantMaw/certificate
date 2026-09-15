@@ -104,10 +104,7 @@ export default function App() {
             }
           >
             <Route path="dashboard" element={<Dashboard />} />
-            <Route
-              path="document-templates"
-              element={<DocumentTemplates />}
-            />
+            <Route path="document-templates" element={<DocumentTemplates />} />
             <Route path="document-templates/new" element={<TemplateCreate />} />
             <Route path="document-templates/:id" element={<TemplateDetail />} />
             <Route

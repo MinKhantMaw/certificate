@@ -7,7 +7,11 @@ import { Document, DocumentTemplate } from "../types";
 import { DocumentPreview } from "../components/DocumentPreview";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { useEncryptedQr } from "../hooks/useEncryptedQr";
-import { getTemplateKeys, getVerificationUrl, resolveTemplateValue } from "../utils";
+import {
+  getTemplateKeys,
+  getVerificationUrl,
+  resolveTemplateValue,
+} from "../utils";
 import {
   ArrowLeft,
   Download,
@@ -49,7 +53,11 @@ function PrintDocumentButton({
     try {
       const dataUrl = await toPng(node, { cacheBust: true, pixelRatio: 2 });
       const link = window.document.createElement("a");
-      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4",
+      });
       pdf.addImage(dataUrl, "PNG", 0, 0, 297, 210);
       pdf.save(`${document.documentNumber || document.id}.pdf`);
     } catch {
@@ -68,9 +76,17 @@ function PrintDocumentButton({
         className="flex items-center px-4 py-2 bg-[#0054a6] text-white rounded-lg hover:bg-[#003f82] font-medium disabled:cursor-not-allowed disabled:bg-blue-300"
       >
         <Download className="w-4 h-4 mr-2" />
-        {downloading ? "Preparing PDF..." : ready ? "Download Image / PDF" : "Preparing QR..."}
+        {downloading
+          ? "Preparing PDF..."
+          : ready
+            ? "Download Image / PDF"
+            : "Preparing QR..."}
       </button>
-      {downloadError && <span role="alert" className="text-xs text-red-600">{downloadError}</span>}
+      {downloadError && (
+        <span role="alert" className="text-xs text-red-600">
+          {downloadError}
+        </span>
+      )}
     </div>
   );
 }
@@ -91,24 +107,37 @@ export function getDetailFields(template?: DocumentTemplate): DetailField[] {
   }));
 }
 
-export function getDetailData(document: Document): Record<string, string | number> {
+export function getDetailData(
+  document: Document,
+): Record<string, string | number> {
   return {
     ...document.dynamicData,
     name: document.dynamicData?.name || document.recipientName,
-    recipient_name: document.dynamicData?.recipient_name || document.recipientName,
+    recipient_name:
+      document.dynamicData?.recipient_name || document.recipientName,
     email: document.dynamicData?.email || document.email,
     course: document.dynamicData?.course || document.courseName,
     course_name: document.dynamicData?.course_name || document.courseName,
     issue_date: document.dynamicData?.issue_date || document.issueDate,
     organization: document.dynamicData?.organization || document.organization,
-    document_title: document.dynamicData?.document_title || document.documentTitle,
+    document_title:
+      document.dynamicData?.document_title || document.documentTitle,
     document_type: document.dynamicData?.document_type || document.documentType,
   };
 }
 
 export function getDetailValue(document: Document, key: string): string {
   return resolveTemplateValue(
-    { id: key, type: "text", key, x: 0, y: 0, width: 0, height: 0, rotation: 0 },
+    {
+      id: key,
+      type: "text",
+      key,
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+      rotation: 0,
+    },
     getDetailData(document),
   );
 }
@@ -126,18 +155,33 @@ export function DocumentDetail() {
     if (id) {
       const initialDocument = storage.getDocumentById(id) || null;
       setCert(initialDocument);
-      const hydrate = storage.initDocuments?.() || Promise.resolve(storage.getDocuments?.() || []);
+      const hydrate =
+        storage.initDocuments?.() ||
+        Promise.resolve(storage.getDocuments?.() || []);
       void hydrate.then((documents) => {
-      const document = documents.find((item) => item.id === id || item.documentNumber === id || item.shortId === id) || initialDocument;
-      setCert(document);
-      if (document?.documentTemplateId) {
-        setTemplateLoading(true);
-        storage.initTemplates().then((templates) => {
-          setTemplate(templates.find((item) => item.id === document.documentTemplateId) || null);
-        }).finally(() => setTemplateLoading(false));
-      } else {
-        setTemplate(null);
-      }
+        const document =
+          documents.find(
+            (item) =>
+              item.id === id ||
+              item.documentNumber === id ||
+              item.shortId === id,
+          ) || initialDocument;
+        setCert(document);
+        if (document?.documentTemplateId) {
+          setTemplateLoading(true);
+          storage
+            .initTemplates()
+            .then((templates) => {
+              setTemplate(
+                templates.find(
+                  (item) => item.id === document.documentTemplateId,
+                ) || null,
+              );
+            })
+            .finally(() => setTemplateLoading(false));
+        } else {
+          setTemplate(null);
+        }
       });
     }
   }, [id]);
@@ -153,7 +197,11 @@ export function DocumentDetail() {
       setCert({ ...cert, status: "REVOKED" });
       setShowRevokeModal(false);
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Unable to revoke the document.");
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "Unable to revoke the document.",
+      );
     }
   };
 
@@ -163,7 +211,11 @@ export function DocumentDetail() {
       storage.deleteDocument(cert.id);
       navigate("/documents");
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Unable to delete the document.");
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "Unable to delete the document.",
+      );
       setShowDeleteModal(false);
     }
   };
@@ -209,7 +261,14 @@ export function DocumentDetail() {
           onCancel={() => setShowDeleteModal(false)}
         />
       )}
-      {actionError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 print:hidden">{actionError}</p>}
+      {actionError && (
+        <p
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 print:hidden"
+        >
+          {actionError}
+        </p>
+      )}
       {/* Header Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200 print:hidden">
         <Link
@@ -259,15 +318,21 @@ export function DocumentDetail() {
           {templateLoading ? (
             <p className="text-sm text-gray-500">Loading template fields...</p>
           ) : !template ? (
-            <p className="text-sm text-gray-500">Template fields are unavailable.</p>
+            <p className="text-sm text-gray-500">
+              Template fields are unavailable.
+            </p>
           ) : !detailFields.length ? (
-            <p className="text-sm text-gray-500">This template has no information fields.</p>
+            <p className="text-sm text-gray-500">
+              This template has no information fields.
+            </p>
           ) : (
             <div className="space-y-3">
               {detailFields.map((field) => (
                 <div key={field.key} className="flex justify-between gap-6">
                   <span className="text-gray-500">{field.label}</span>
-                  <span className="text-right font-medium">{getDetailValue(cert, field.key) || "-"}</span>
+                  <span className="text-right font-medium">
+                    {getDetailValue(cert, field.key) || "-"}
+                  </span>
                 </div>
               ))}
             </div>
@@ -278,10 +343,7 @@ export function DocumentDetail() {
       {/* Print Area */}
       <div className="bg-gray-100 p-8 rounded-xl border border-gray-200 flex justify-center overflow-x-auto print:bg-white print:p-0 print:border-none print:m-0 print:block">
         <div className="print-container origin-top-left">
-          <DocumentPreview
-            document={cert}
-            baseUrl={window.location.origin}
-          />
+          <DocumentPreview document={cert} baseUrl={window.location.origin} />
         </div>
       </div>
 
