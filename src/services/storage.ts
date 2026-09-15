@@ -1,5 +1,6 @@
 import { AuditLog, Document, DocumentApproval, DocumentTemplate, ImportedRow, ImportBatch, ImportRecord, PendingImportTrainee, User, UserRole } from '../types';
 import { generateShortDocumentId, getVerificationUrl } from '../utils';
+import { requestEncryptedQr } from './encryptLink';
 
 const createUniqueShortId = (taken: Set<string>): string => {
   for (let attempt = 0; attempt < 10; attempt += 1) {
@@ -93,7 +94,7 @@ export const storage = {
   getPendingImportTrainees: (batchId?: string) => { const rows = read<PendingImportTrainee[]>(KEYS.pendingImportTrainees, []); return batchId ? rows.filter(item => item.importBatchId === batchId) : rows; },
   savePendingImportTrainees: (rows: PendingImportTrainee[]) => write(KEYS.pendingImportTrainees, [...storage.getPendingImportTrainees(), ...rows]),
 
-  generateDocuments: (rows: ImportedRow[], templateId: string) => {
+  generateDocuments: async (rows: ImportedRow[], templateId: string) => {
     const template = storage.getTemplates().find(item => item.id === templateId && item.status === 'ACTIVE');
     if (!template) throw new Error('Select an active document template before generation.');
     if (!rows.length || rows.some(row => !row.isValid)) throw new Error('All imported rows must be valid before generation.');
@@ -108,6 +109,14 @@ export const storage = {
       const data = row.dynamicData || {};
       return { id: number, documentNumber: number, shortId, verificationToken: token, verificationUrl: getVerificationUrl(token), recipientName: row.recipient_name, documentTitle: String(data.document_title || row.document_title || 'Document of Completion'), courseName: String(data.course || data.course_name || row.course_name || ''), issueDate: String(data.issue_date || data.completion_date || row.issue_date || timestamp.slice(0, 10)), organization: String(data.organization || row.organization || ''), documentType: String(data.document_type || row.document_type || 'completion'), email: row.email, status: 'VALID', documentTemplateId: template.id, dynamicData: { ...data, document_id: data.document_id || shortId, short_id: shortId }, createdAt: timestamp };
     });
+    if (template.layout?.elements.some((element) => element.type === 'qr')) {
+      const encryptedQrs = await Promise.all(documents.map((document) => requestEncryptedQr(document)));
+      documents.forEach((document, index) => {
+        document.encryptedQrUrl = encryptedQrs[index].qrUrl;
+        document.encryptedQrToken = encryptedQrs[index].token;
+        document.encryptedQrAt = now();
+      });
+    }
     storage.saveDocuments(documents);
     storage.addAuditLog('Document import generated', 'ImportBatch', documents.map(document => document.id).join(','));
     return documents;

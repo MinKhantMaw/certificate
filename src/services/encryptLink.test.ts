@@ -10,7 +10,7 @@ describe('requestEncryptedQr', () => {
     const configuredUrl = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.VITE_ENCRYPT_API_URL ?? process.env.VITE_ENCRYPT_API_URL;
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ qrUrl: 'https://example.com/qr/abc123', token: 'abc123' }),
+      json: async () => ({ qr_url: 'https://example.com/qr/abc123', token: 'abc123' }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -42,6 +42,13 @@ describe('requestEncryptedQr', () => {
         method: 'POST',
         headers: expect.objectContaining({
           'Content-Type': 'application/json',
+        }),
+        body: JSON.stringify({
+          payload: {
+            cert_id: 'DOC-1',
+            recipient: 'Alice',
+            issued_at: '2026-01-01',
+          },
         }),
       }),
     );

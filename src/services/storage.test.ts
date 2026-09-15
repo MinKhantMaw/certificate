@@ -39,7 +39,7 @@ describe("document template CRUD", () => {
     const storage = await loadStorage();
     await storage.initTemplates();
     await storage.saveTemplate(template());
-    const documents = storage.generateDocuments(
+    const documents = await storage.generateDocuments(
       [
         row({ recipient_name: "Valid", email: "valid@example.com" }),
         row({ recipient_name: "Revoked", email: "revoked@example.com" }),
@@ -71,7 +71,7 @@ describe("direct document generation", () => {
     const storage = await loadStorage();
     await storage.initTemplates();
     await storage.saveTemplate(template());
-    const documents = storage.generateDocuments([row(), row({ recipient_name: "Jamie Doe", email: "jamie@example.com" })], "template-1");
+    const documents = await storage.generateDocuments([row(), row({ recipient_name: "Jamie Doe", email: "jamie@example.com" })], "template-1");
 
     expect(documents).toHaveLength(2);
     expect(new Set(documents.map((document) => document.shortId)).size).toBe(2);
@@ -83,8 +83,8 @@ describe("direct document generation", () => {
     const storage = await loadStorage();
     await storage.initTemplates();
     await storage.saveTemplate(template());
-    expect(() => storage.generateDocuments([row({ isValid: false, errors: ["Invalid email"] })], "template-1"))
-      .toThrow("All imported rows must be valid before generation.");
+    await expect(storage.generateDocuments([row({ isValid: false, errors: ["Invalid email"] })], "template-1"))
+      .rejects.toThrow("All imported rows must be valid before generation.");
   });
 
   it("migrates legacy certificate storage to document storage", async () => {
@@ -104,7 +104,7 @@ describe("direct document generation", () => {
     const storage = await loadStorage();
     await storage.initTemplates();
     await storage.saveTemplate(template());
-    const [document] = storage.generateDocuments([row()], "template-1");
+    const [document] = await storage.generateDocuments([row()], "template-1");
     storage.saveApprovals([{ id: "approval-1", documentId: document.id, approverId: "approver", status: "PENDING", createdAt: "", updatedAt: "" }]);
     storage.deleteDocument(document.id);
 

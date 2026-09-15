@@ -5,7 +5,11 @@ import { Document, DocumentTemplate, ImportBatch, ImportedRow } from "../types";
 import { storage } from "../services/storage";
 import { getTemplateKeys } from "../utils";
 import { DocumentPreview } from "../components/DocumentPreview";
-import { MAX_IMPORT_FILE_SIZE, MAX_IMPORT_ROWS, parseImportedRow } from "../utils/importRows";
+import {
+  MAX_IMPORT_FILE_SIZE,
+  MAX_IMPORT_ROWS,
+  parseImportedRow,
+} from "../utils/importRows";
 
 type ImportStep = "UPLOAD" | "PREVIEW" | "COMPLETED";
 const PREVIEW_PAGE_SIZE = 100;
@@ -20,9 +24,16 @@ export function ImportExcel() {
   const [batch, setBatch] = useState<ImportBatch | null>(null);
   const [error, setError] = useState("");
   const [page, setPage] = useState(0);
-  const template = templates.find((item) => item.id === templateId && item.status === "ACTIVE");
+  const template = templates.find(
+    (item) => item.id === templateId && item.status === "ACTIVE",
+  );
 
-  useEffect(() => { storage.initTemplates().then(setTemplates).catch(() => setError("Unable to load document templates.")); }, []);
+  useEffect(() => {
+    storage
+      .initTemplates()
+      .then(setTemplates)
+      .catch(() => setError("Unable to load document templates."));
+  }, []);
   useEffect(() => {
     if (!error) return;
     const timeout = window.setTimeout(() => setError(""), 5000);
@@ -30,8 +41,12 @@ export function ImportExcel() {
   }, [error]);
 
   const upload = (selectedFile: File) => {
-    if (!template) return setError("Select an active document template before uploading Excel.");
-    if (selectedFile.size > MAX_IMPORT_FILE_SIZE) return setError("Excel files must be 10 MB or smaller.");
+    if (!template)
+      return setError(
+        "Select an active document template before uploading Excel.",
+      );
+    if (selectedFile.size > MAX_IMPORT_FILE_SIZE)
+      return setError("Excel files must be 10 MB or smaller.");
     setError("");
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -39,40 +54,285 @@ export function ImportExcel() {
         const XLSX = await import("xlsx");
         const sheet = XLSX.read(event.target?.result, { type: "array" }).Sheets;
         const firstSheet = sheet[Object.keys(sheet)[0]];
-        const source = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, { defval: "" });
+        const source = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+          firstSheet,
+          { defval: "" },
+        );
         if (!source.length) throw new Error("The Excel file contains no rows.");
-        if (source.length > MAX_IMPORT_ROWS) throw new Error(`Excel files are limited to ${MAX_IMPORT_ROWS} rows.`);
-        setRows(source.map((row) => parseImportedRow(row, getTemplateKeys(template.layout))));
-        setFile(selectedFile); setPage(0); setStep("PREVIEW");
-      } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to parse this Excel file."); }
+        if (source.length > MAX_IMPORT_ROWS)
+          throw new Error(
+            `Excel files are limited to ${MAX_IMPORT_ROWS} rows.`,
+          );
+        setRows(
+          source.map((row) =>
+            parseImportedRow(row, getTemplateKeys(template.layout)),
+          ),
+        );
+        setFile(selectedFile);
+        setPage(0);
+        setStep("PREVIEW");
+      } catch (reason) {
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Unable to parse this Excel file.",
+        );
+      }
     };
     reader.readAsArrayBuffer(selectedFile);
   };
 
-  const generate = () => {
+  const generate = async () => {
     if (!template || !file || rows.some((row) => !row.isValid)) return;
     try {
-      const documents = storage.generateDocuments(rows, template.id);
+      const documents = await storage.generateDocuments(rows, template.id);
       const timestamp = new Date().toISOString();
-      const nextBatch: ImportBatch = { id: `IMP-${new Date().getFullYear()}-${String(storage.getImportBatches().length + 1).padStart(3, "0")}`, templateId: template.id, fileName: file.name, totalRows: rows.length, validRows: rows.length, invalidRows: 0, status: "COMPLETED", uploadedBy: storage.getUser()?.id || "unknown", submittedAt: timestamp, createdAt: timestamp, updatedAt: timestamp };
-      storage.saveImportBatch(nextBatch); setBatch(nextBatch); setStep("COMPLETED");
+      const nextBatch: ImportBatch = {
+        id: `IMP-${new Date().getFullYear()}-${String(storage.getImportBatches().length + 1).padStart(3, "0")}`,
+        templateId: template.id,
+        fileName: file.name,
+        totalRows: rows.length,
+        validRows: rows.length,
+        invalidRows: 0,
+        status: "COMPLETED",
+        uploadedBy: storage.getUser()?.id || "unknown",
+        submittedAt: timestamp,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
+      storage.saveImportBatch(nextBatch);
+      setBatch(nextBatch);
+      setStep("COMPLETED");
       if (!documents.length) throw new Error("No documents were generated.");
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to generate documents."); }
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Unable to generate documents.",
+      );
+    }
   };
 
   const activeTemplates = templates.filter((item) => item.status === "ACTIVE");
   const templateKeys = getTemplateKeys(template?.layout);
   const validCount = rows.filter((row) => row.isValid).length;
-  const visibleRows = rows.slice(page * PREVIEW_PAGE_SIZE, (page + 1) * PREVIEW_PAGE_SIZE);
-  return <div className="space-y-6">
-    <Link to="/documents" className="inline-flex items-center gap-2 text-sm font-medium text-[#0054a6] hover:text-[#003f82]"><ChevronRight className="rotate-180" size={16} /> Back to documents</Link>
-    <div><h2 className="mt-2 text-3xl font-semibold text-slate-950">Upload documents</h2><p className="mt-2 text-slate-500">Select a template, validate an Excel file, then generate documents.</p></div>
-    <label className="block max-w-xl text-sm font-medium text-slate-700">Template<select value={templateId} onChange={(event) => { setTemplateId(event.target.value); setRows([]); setFile(null); setStep("UPLOAD"); setError(""); }} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2"><option value="">Select template</option>{activeTemplates.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{!activeTemplates.length && <span className="mt-2 block text-sm font-normal text-amber-700">Create an template before uploading documents.</span>}</label>
-    {error && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
-    {step === "UPLOAD" && <div className="rounded-xl border border-slate-200 bg-white p-12 text-center shadow-sm"><Upload className="mx-auto text-[#0054a6]" size={42} /><h3 className="mt-4 text-lg font-semibold text-slate-950">Upload Excel roster</h3><p className="mx-auto mt-2 max-w-lg text-sm text-slate-500">Required columns are varied depending on the selected template.</p><label onClick={(event) => { if (!template) { event.preventDefault(); setError("Select an active document template before uploading Excel."); } }} className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#0054a6] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#0054a6]"><Upload size={17} /> Select Excel file<input type="file" accept=".xlsx,.xls" className="hidden" onChange={(event: ChangeEvent<HTMLInputElement>) => event.target.files?.[0] && upload(event.target.files[0])} /></label></div>}
-    {step === "PREVIEW" && template && <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 p-5"><div><h3 className="font-semibold text-slate-950">Preview imported data</h3><p className="text-sm text-slate-500">{file?.name} · {rows.length} rows · {validCount} valid</p></div><div className="flex gap-3"><button onClick={() => setStep("UPLOAD")} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Choose another</button><button disabled={validCount !== rows.length} onClick={generate} className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">Generate documents</button></div></div><div className="border-b border-slate-200 bg-slate-50 p-5"><p className="mb-3 text-sm font-semibold text-slate-700">Document preview using {template.name}</p><div className="overflow-x-auto"><DocumentPreview document={previewDocument(rows[0], template.id)} /></div></div><div className="overflow-x-auto"><table className="min-w-full divide-y divide-slate-200"><thead><tr>{["Validation", ...templateKeys, "Errors"].map((label) => <th key={label} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</th>)}</tr></thead><tbody>{visibleRows.map((row, index) => <tr key={index} className={row.isValid ? "" : "bg-red-50/60"}><td className="px-4 py-3">{row.isValid ? <CheckCircle2 className="text-emerald-600" size={18} /> : <AlertCircle className="text-red-600" size={18} />}</td>{templateKeys.map((key) => <td key={key} className="px-4 py-3 text-sm">{row.dynamicData?.[key.toLowerCase()] ?? "-"}</td>)}<td className="px-4 py-3 text-sm text-red-700">{row.errors?.join(", ") || "-"}</td></tr>)}</tbody></table></div>{rows.length > PREVIEW_PAGE_SIZE && <div className="flex justify-end gap-2 border-t p-3"><button disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</button><button disabled={(page + 1) * PREVIEW_PAGE_SIZE >= rows.length} onClick={() => setPage(page + 1)}>Next</button></div>}</div>}
-    {step === "COMPLETED" && batch && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-10 text-center"><CheckCircle2 className="mx-auto text-emerald-600" size={48} /><h3 className="mt-4 text-2xl font-semibold text-emerald-950">Documents generated</h3><p className="mt-2 text-emerald-800">{batch.id} · {batch.validRows} documents were created.</p><button onClick={() => navigate("/documents")} className="mt-6 rounded-lg bg-[#0054a6] px-4 py-2 text-sm font-semibold text-white hover:bg-[#003f82]">Return to documents</button></div>}
-  </div>;
+  const visibleRows = rows.slice(
+    page * PREVIEW_PAGE_SIZE,
+    (page + 1) * PREVIEW_PAGE_SIZE,
+  );
+  return (
+    <div className="space-y-6">
+      <Link
+        to="/documents"
+        className="inline-flex items-center gap-2 text-sm font-medium text-[#0054a6] hover:text-[#003f82]"
+      >
+        <ChevronRight className="rotate-180" size={16} /> Back to documents
+      </Link>
+      <div>
+        <h2 className="mt-2 text-3xl font-semibold text-slate-950">
+          Upload documents
+        </h2>
+        <p className="mt-2 text-slate-500">
+          Select a template, validate an Excel file, then generate documents.
+        </p>
+      </div>
+      <label className="block max-w-xl text-sm font-medium text-slate-700">
+        Template
+        <select
+          value={templateId}
+          onChange={(event) => {
+            setTemplateId(event.target.value);
+            setRows([]);
+            setFile(null);
+            setStep("UPLOAD");
+            setError("");
+          }}
+          className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+        >
+          <option value="">Select template</option>
+          {activeTemplates.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
+        </select>
+        {!activeTemplates.length && (
+          <span className="mt-2 block text-sm font-normal text-amber-700">
+            Create an template before uploading documents.
+          </span>
+        )}
+      </label>
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+      {step === "UPLOAD" && (
+        <div className="rounded-xl border border-slate-200 bg-white p-12 text-center shadow-sm">
+          <Upload className="mx-auto text-[#0054a6]" size={42} />
+          <h3 className="mt-4 text-lg font-semibold text-slate-950">
+            Upload Excel roster
+          </h3>
+          <p className="mx-auto mt-2 max-w-lg text-sm text-slate-500">
+            Required columns are varied depending on the selected template.
+          </p>
+          <label
+            onClick={(event) => {
+              if (!template) {
+                event.preventDefault();
+                setError(
+                  "Select an active document template before uploading Excel.",
+                );
+              }
+            }}
+            className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#0054a6] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#0054a6]"
+          >
+            <Upload size={17} /> Select Excel file
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                event.target.files?.[0] && upload(event.target.files[0])
+              }
+            />
+          </label>
+        </div>
+      )}
+      {step === "PREVIEW" && template && (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 p-5">
+            <div>
+              <h3 className="font-semibold text-slate-950">
+                Preview imported data
+              </h3>
+              <p className="text-sm text-slate-500">
+                {file?.name} · {rows.length} rows · {validCount} valid
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setStep("UPLOAD")}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700"
+              >
+                Choose another
+              </button>
+              <button
+                disabled={validCount !== rows.length}
+                onClick={generate}
+                className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Generate documents
+              </button>
+            </div>
+          </div>
+          <div className="border-b border-slate-200 bg-slate-50 p-5">
+            <p className="mb-3 text-sm font-semibold text-slate-700">
+              Document preview using {template.name}
+            </p>
+            <div className="overflow-x-auto">
+              <DocumentPreview
+                document={previewDocument(rows[0], template.id)}
+              />
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead>
+                <tr>
+                  {["Validation", ...templateKeys, "Errors"].map((label) => (
+                    <th
+                      key={label}
+                      className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
+                    >
+                      {label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleRows.map((row, index) => (
+                  <tr key={index} className={row.isValid ? "" : "bg-red-50/60"}>
+                    <td className="px-4 py-3">
+                      {row.isValid ? (
+                        <CheckCircle2 className="text-emerald-600" size={18} />
+                      ) : (
+                        <AlertCircle className="text-red-600" size={18} />
+                      )}
+                    </td>
+                    {templateKeys.map((key) => (
+                      <td key={key} className="px-4 py-3 text-sm">
+                        {row.dynamicData?.[key.toLowerCase()] ?? "-"}
+                      </td>
+                    ))}
+                    <td className="px-4 py-3 text-sm text-red-700">
+                      {row.errors?.join(", ") || "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {rows.length > PREVIEW_PAGE_SIZE && (
+            <div className="flex justify-end gap-2 border-t p-3">
+              <button disabled={page === 0} onClick={() => setPage(page - 1)}>
+                Previous
+              </button>
+              <button
+                disabled={(page + 1) * PREVIEW_PAGE_SIZE >= rows.length}
+                onClick={() => setPage(page + 1)}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {step === "COMPLETED" && batch && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-10 text-center">
+          <CheckCircle2 className="mx-auto text-emerald-600" size={48} />
+          <h3 className="mt-4 text-2xl font-semibold text-emerald-950">
+            Documents generated
+          </h3>
+          <p className="mt-2 text-emerald-800">
+            {batch.id} · {batch.validRows} documents were created.
+          </p>
+          <button
+            onClick={() => navigate("/documents")}
+            className="mt-6 rounded-lg bg-[#0054a6] px-4 py-2 text-sm font-semibold text-white hover:bg-[#003f82]"
+          >
+            Return to documents
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
-function previewDocument(row: ImportedRow, templateId: string): Document { const data = row.dynamicData || {}; return { id: "preview", documentNumber: "PREVIEW", shortId: "PREVIEW-01", verificationToken: "preview", verificationUrl: "", recipientName: row.recipient_name, documentTitle: String(data.document_title || row.document_title || "Document of Completion"), courseName: String(data.course || data.course_name || row.course_name), issueDate: String(data.issue_date || data.completion_date || row.issue_date), organization: String(data.organization || row.organization), documentType: String(data.document_type || row.document_type || "completion"), email: row.email, status: "DRAFT", documentTemplateId: templateId, dynamicData: data, createdAt: new Date().toISOString() }; }
+function previewDocument(row: ImportedRow, templateId: string): Document {
+  const data = row.dynamicData || {};
+  return {
+    id: "preview",
+    documentNumber: "PREVIEW",
+    shortId: "PREVIEW-01",
+    verificationToken: "preview",
+    verificationUrl: "",
+    recipientName: row.recipient_name,
+    documentTitle: String(
+      data.document_title || row.document_title || "Document of Completion",
+    ),
+    courseName: String(data.course || data.course_name || row.course_name),
+    issueDate: String(
+      data.issue_date || data.completion_date || row.issue_date,
+    ),
+    organization: String(data.organization || row.organization),
+    documentType: String(
+      data.document_type || row.document_type || "completion",
+    ),
+    email: row.email,
+    status: "DRAFT",
+    documentTemplateId: templateId,
+    dynamicData: data,
+    createdAt: new Date().toISOString(),
+  };
+}

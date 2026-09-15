@@ -4,9 +4,6 @@ export interface EncryptPayload {
   cert_id: string;
   recipient: string;
   issued_at: string;
-  course: string;
-  organization: string;
-  email: string;
 }
 
 export interface EncryptedQr {
@@ -42,18 +39,17 @@ export async function requestEncryptedQr(document: Document): Promise<EncryptedQ
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          cert_id: document.id,
-          recipient: document.recipientName,
-          issued_at: document.issueDate,
-          course: document.courseName,
-          organization: document.organization,
-          email: document.email,
-        } satisfies EncryptPayload),
+          payload: {
+            cert_id: document.id,
+            recipient: document.recipientName,
+            issued_at: document.issueDate,
+          } satisfies EncryptPayload,
+        }),
       });
 
       if (response.ok) {
-        const payload = await response.json() as Partial<EncryptedQr> & { qrUrl?: string; encryptedQrUrl?: string; url?: string };
-        const qrUrl = payload.qrUrl || payload.encryptedQrUrl || payload.url;
+        const payload = await response.json() as Partial<EncryptedQr> & { qr_url?: string; qrUrl?: string; encryptedQrUrl?: string; url?: string };
+        const qrUrl = payload.qr_url || payload.qrUrl || payload.encryptedQrUrl || payload.url;
         const token = payload.token || document.verificationToken;
         if (qrUrl && token) {
           return { qrUrl: String(qrUrl), token: String(token) };
