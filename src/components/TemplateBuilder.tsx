@@ -3,6 +3,8 @@ import Konva from "konva";
 import {
   Image as KonvaImage,
   Layer,
+  Line,
+  Group,
   Rect,
   Stage,
   Text,
@@ -28,6 +30,7 @@ import {
   User,
 } from "../types";
 import { createDefaultLayout } from "../utils/templateLayout";
+import { AlignmentGuide, getAlignmentGuides } from "../utils/alignmentGuides";
 
 const PAGE_SIZES: Record<TemplatePageSize, { width: number; height: number }> =
   {
@@ -46,6 +49,29 @@ const MAX_SOURCE_BYTES = 10 * 1024 * 1024;
 const MAX_OUTPUT_BYTES = 1024 * 1024;
 const MAX_IMAGE_EDGE = 1920;
 const BACKGROUND_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const SAMPLE_QR_PATTERN = [
+  "111111100101101111111",
+  "100000101110101000001",
+  "101110100011101011101",
+  "101110101101101011101",
+  "101110100110101011101",
+  "100000101011101000001",
+  "111111101010101111111",
+  "000000001101100000000",
+  "101011111001011101101",
+  "011100010111100010010",
+  "110101110010111011101",
+  "001011001101001101100",
+  "111010111010111010011",
+  "000000001011001101010",
+  "111111101101110010101",
+  "100000100011011101100",
+  "101110101110100011011",
+  "101110100101111010010",
+  "101110101011001101101",
+  "100000101100110010010",
+  "111111101011101101101",
+];
 
 function loadImage(file: Blob) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -127,6 +153,7 @@ export function TemplateBuilder({
     template.layout || createDefaultLayout(),
   );
   const [selectedId, setSelectedId] = useState<string>();
+  const [alignmentGuides, setAlignmentGuides] = useState<AlignmentGuide[]>([]);
   const [zoom, setZoom] = useState(0.52);
   const [previewZoom, setPreviewZoom] = useState(0.7);
   const [previewMode, setPreviewMode] = useState(false);
@@ -553,10 +580,50 @@ export function TemplateBuilder({
                     selected={element.id === selectedId}
                     signatures={signatures}
                     onSelect={() => setSelectedId(element.id)}
+                    onDragMove={(position) =>
+                      setAlignmentGuides(
+                        getAlignmentGuides(
+                          { ...element, ...position },
+                          layout.elements,
+                        ),
+                      )
+                    }
+                    onDragEnd={() => setAlignmentGuides([])}
                     onChange={(patch) => patchSelected(patch)}
                     onUpload={(event) => uploadFile(event, "image")}
                   />
                 ))}
+                {alignmentGuides.map((guide) =>
+                  guide.orientation === "vertical" ? (
+                    <Line
+                      key={`vertical-${guide.position}`}
+                      points={[
+                        guide.position,
+                        0,
+                        guide.position,
+                        layout.canvas.height,
+                      ]}
+                      stroke="#ef4444"
+                      strokeWidth={1.5}
+                      dash={[6, 4]}
+                      listening={false}
+                    />
+                  ) : (
+                    <Line
+                      key={`horizontal-${guide.position}`}
+                      points={[
+                        0,
+                        guide.position,
+                        layout.canvas.width,
+                        guide.position,
+                      ]}
+                      stroke="#ef4444"
+                      strokeWidth={1.5}
+                      dash={[6, 4]}
+                      listening={false}
+                    />
+                  ),
+                )}
                 <Transformer
                   ref={transformerRef}
                   rotateEnabled
@@ -634,6 +701,8 @@ function EditorElement({
   selected,
   signatures,
   onSelect,
+  onDragMove,
+  onDragEnd,
   onChange,
   onUpload,
 }: {
@@ -641,6 +710,8 @@ function EditorElement({
   selected: boolean;
   signatures: User[];
   onSelect: () => void;
+  onDragMove: (position: { x: number; y: number }) => void;
+  onDragEnd: () => void;
   onChange: (patch: Partial<TemplateElement>) => void;
   onUpload: (event: ChangeEvent<HTMLInputElement>) => void;
 }) {
@@ -654,8 +725,12 @@ function EditorElement({
     draggable: true,
     onClick: onSelect,
     onTap: onSelect,
-    onDragEnd: (event: Konva.KonvaEventObject<DragEvent>) =>
-      onChange({ x: event.target.x(), y: event.target.y() }),
+    onDragMove: (event: Konva.KonvaEventObject<DragEvent>) =>
+      onDragMove({ x: event.target.x(), y: event.target.y() }),
+    onDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => {
+      onDragEnd();
+      onChange({ x: event.target.x(), y: event.target.y() });
+    },
     onTransformEnd: (event: Konva.KonvaEventObject<Event>) => {
       const node = event.target;
       onChange({
@@ -696,8 +771,7 @@ function EditorElement({
         cornerRadius={4}
       />
     );
-  if (element.type === "qr")
-    return <Rect {...common} fill="#f8fafc" stroke="#334155" dash={[8, 6]} />;
+  if (element.type === "qr") return <SampleQrCode {...common} />;
   const src =
     element.type === "signature"
       ? signatures.find((user) => user.id === element.signatureId)
@@ -712,6 +786,43 @@ function EditorElement({
       stroke={selected ? "#0f766e" : "#94a3b8"}
       dash={[8, 6]}
     />
+  );
+}
+
+function SampleQrCode(props: ReturnType<typeof Object>) {
+  const {
+    width = 120,
+    height = 120,
+    ...groupProps
+  } = props as {
+    width?: number;
+    height?: number;
+    [key: string]: unknown;
+  };
+  const cellSize = Math.min(width, height) / SAMPLE_QR_PATTERN.length;
+  const offsetX = (width - cellSize * SAMPLE_QR_PATTERN.length) / 2;
+  const offsetY = (height - cellSize * SAMPLE_QR_PATTERN.length) / 2;
+
+  return (
+    <Group {...groupProps} width={width} height={height}>
+      <Rect width={width} height={height} fill="white" stroke="#334155" />
+      {SAMPLE_QR_PATTERN.flatMap((row, rowIndex) =>
+        [...row].flatMap((value, columnIndex) =>
+          value === "1"
+            ? [
+                <Rect
+                  key={`${rowIndex}-${columnIndex}`}
+                  x={offsetX + columnIndex * cellSize}
+                  y={offsetY + rowIndex * cellSize}
+                  width={cellSize + 0.5}
+                  height={cellSize + 0.5}
+                  fill="#0f172a"
+                />,
+              ]
+            : [],
+        ),
+      )}
+    </Group>
   );
 }
 
