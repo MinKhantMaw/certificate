@@ -7,7 +7,9 @@ const Login = lazy(() =>
   import("../pages/Login").then(({ Login }) => ({ default: Login })),
 );
 const Dashboard = lazy(() =>
-  import("../pages/Dashboard").then(({ Dashboard }) => ({ default: Dashboard })),
+  import("../pages/Dashboard").then(({ Dashboard }) => ({
+    default: Dashboard,
+  })),
 );
 const ImportExcel = lazy(() =>
   import("../pages/ImportExcel").then(({ ImportExcel }) => ({
@@ -50,7 +52,9 @@ const TemplateCreate = lazy(() =>
   })),
 );
 const Approvals = lazy(() =>
-  import("../pages/Approvals").then(({ Approvals }) => ({ default: Approvals })),
+  import("../pages/Approvals").then(({ Approvals }) => ({
+    default: Approvals,
+  })),
 );
 const SignatureProfile = lazy(() =>
   import("../pages/SignatureProfile").then(({ SignatureProfile }) => ({
