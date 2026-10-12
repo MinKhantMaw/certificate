@@ -30,14 +30,14 @@ export function Login() {
     <div className="min-h-screen bg-[#002c76] flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <Link to="/" className="flex justify-center" aria-label="Kanva home">
-          <img
+          {/* <img
             src="/kbzlogo.png"
             alt="KBZ logo"
             className="h-14 w-14 rounded-2xl object-cover shadow-lg shadow-[#001f52]/40"
-          />
+          /> */}
         </Link>
         <p className="mt-4 text-center text-sm font-semibold tracking-[0.2em] text-white">
-          KBZ E-Certificate
+          E-Certificate
         </p>
         <h2 className="mt-3 text-center text-3xl font-extrabold tracking-tight text-white">
           Sign in to your account

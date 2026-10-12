@@ -23,7 +23,7 @@ describe('requestEncryptedQr', () => {
       documentTitle: 'Certificate',
       courseName: 'Security',
       issueDate: '2026-01-01',
-      organization: 'KBZ',
+      organization: 'ORG',
       documentType: 'completion',
       email: 'alice@example.com',
       status: 'VALID',

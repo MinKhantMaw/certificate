@@ -17,7 +17,7 @@ const document: Document = {
   documentTitle: "Completion",
   courseName: "Course",
   issueDate: "2026-01-01",
-  organization: "KBZ BANK",
+  organization: "ORG",
   documentType: "completion",
   email: "preview@example.com",
   status: "VALID",
@@ -118,7 +118,7 @@ const templates: DocumentTemplate[] = [
         {
           id: "plain",
           type: "plain_text",
-          content: "Issued by KBZ BANK",
+          content: "Issued by ORG",
           x: 0,
           y: 0,
           width: 50,
@@ -197,7 +197,7 @@ describe("DocumentPreview QR rendering", () => {
   it("renders configured plain text content", async () => {
     renderPreview("template-plain-text");
     await vi.waitFor(() =>
-      expect(window.document.body.textContent).toContain("Issued by KBZ BANK"),
+      expect(window.document.body.textContent).toContain("Issued by ORG"),
     );
   });
 });

@@ -200,7 +200,7 @@ export const storage = {
     const template: DocumentTemplate = { id: 'tpl-modern', name: 'Modern Professional', description: 'A clean, editorial document for professional learning.', design: 'classic', status: 'ACTIVE', createdBy: 'u-admin', createdAt: now(), updatedAt: now() };
     write(KEYS.users, users); write(KEYS.templates, [template]);
     const token = '00000000-0000-4000-8000-000000000001';
-    const document: Document = { id: 'DOC-2026-000001', documentNumber: 'DOC-2026-000001', verificationToken: token, verificationUrl: getVerificationUrl(token), recipientName: 'Alice Johnson', documentTitle: 'Document of Completion', courseName: 'Advanced React Patterns', issueDate: '2026-08-15', organization: 'KBZ BANK', documentType: 'completion', email: 'alice@example.com', status: 'VALID', documentTemplateId: template.id, createdAt: now() };
+    const document: Document = { id: 'DOC-2026-000001', documentNumber: 'DOC-2026-000001', verificationToken: token, verificationUrl: getVerificationUrl(token), recipientName: 'Alice Johnson', documentTitle: 'Document of Completion', courseName: 'Advanced React Patterns', issueDate: '2026-08-15', organization: 'ORG', documentType: 'completion', email: 'alice@example.com', status: 'VALID', documentTemplateId: template.id, createdAt: now() };
     const pendingToken = '00000000-0000-4000-8000-000000000002';
     const pending: Document = { ...document, id: 'DOC-2026-000002', documentNumber: 'DOC-2026-000002', verificationToken: pendingToken, verificationUrl: getVerificationUrl(pendingToken), recipientName: 'Bob Smith', email: 'bob@example.com', status: 'PENDING_APPROVAL' };
     if (!hasDocuments) write(KEYS.documents, [document, pending]);

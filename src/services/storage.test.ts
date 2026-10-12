@@ -9,7 +9,7 @@ const template = (): DocumentTemplate => ({
 
 const row = (overrides: Partial<ImportedRow> = {}): ImportedRow => ({
   recipient_name: "Alex Smith", email: "alex@example.com", document_title: "Completion",
-  course_name: "Security", issue_date: "2026-01-01", organization: "KBZ", document_type: "completion",
+  course_name: "Security", issue_date: "2026-01-01", organization: "ORG", document_type: "completion",
   isValid: true, errors: [], dynamicData: {}, ...overrides,
 });
 

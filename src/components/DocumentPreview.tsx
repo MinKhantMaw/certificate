@@ -123,7 +123,7 @@ export function DocumentPreview({
             <span className="absolute left-1/2 top-3 -translate-x-1/2 border-x-[14px] border-b-[25px] border-x-transparent border-b-[#173b78]" />
           </div>
           <div className="-mt-1 text-[clamp(14px,2.3vw,25px)] font-bold leading-none text-[#b3202b]">
-            {document.organization || "KBZ BANK"}
+            {document.organization || " ORG"}
           </div>
           <div className="mt-1 text-[clamp(5px,.65vw,8px)] font-bold tracking-[.35em] text-[#19427e]">
             STRENGTH OF MYANMAR

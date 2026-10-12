@@ -45,13 +45,13 @@ export function Landing() {
             className="flex items-center gap-3"
             aria-label="Kanva home"
           >
-            <img
+            {/* <img
               src="/kbzlogo.png"
               alt="KBZ logo"
               className="h-10 w-10 rounded-xl object-cover shadow-sm shadow-[#001f52]/30"
-            />
+            /> */}
             <span className="text-lg font-semibold tracking-tight">
-              KBZ E-Certificate
+              E-Certificate
             </span>
           </Link>
           <Link
